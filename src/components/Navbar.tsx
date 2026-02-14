@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Menu, X, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <motion.nav
@@ -30,12 +32,20 @@ const Navbar = () => {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" asChild>
-            <Link to="/login">Sign In</Link>
-          </Button>
-          <Button asChild className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-            <Link to="/signup">Get Started</Link>
-          </Button>
+          {user ? (
+            <Button asChild className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+              <Link to="/dashboard">Dashboard</Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link to="/login">Sign In</Link>
+              </Button>
+              <Button asChild className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                <Link to="/signup">Get Started</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-foreground">
@@ -44,20 +54,24 @@ const Navbar = () => {
       </div>
 
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="border-t border-border bg-card px-6 py-4 md:hidden"
-        >
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="border-t border-border bg-card px-6 py-4 md:hidden">
           <div className="flex flex-col gap-3">
             <a href="#features" className="text-sm text-muted-foreground">Features</a>
             <a href="#security" className="text-sm text-muted-foreground">Security</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground">How It Works</a>
             <hr className="border-border" />
-            <Link to="/login" className="text-sm text-foreground">Sign In</Link>
-            <Button asChild className="bg-secondary text-secondary-foreground">
-              <Link to="/signup">Get Started</Link>
-            </Button>
+            {user ? (
+              <Button asChild className="bg-secondary text-secondary-foreground">
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm text-foreground">Sign In</Link>
+                <Button asChild className="bg-secondary text-secondary-foreground">
+                  <Link to="/signup">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </motion.div>
       )}
