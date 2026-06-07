@@ -12,6 +12,8 @@ import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Patients from "./pages/Patients";
 import Analytics from "./pages/Analytics";
+import Records from "./pages/Records";
+import AuditLogs from "./pages/AuditLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,14 @@ const App = () => (
             <Route
               path="/analytics"
               element={<ProtectedRoute><Analytics /></ProtectedRoute>}
+            />
+            <Route
+              path="/records"
+              element={<ProtectedRoute><Records /></ProtectedRoute>}
+            />
+            <Route
+              path="/audit"
+              element={<ProtectedRoute><AuditLogs /></ProtectedRoute>}
             />
             <Route
               path="/admin"
