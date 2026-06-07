@@ -10,6 +10,8 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import Patients from "./pages/Patients";
+import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +34,14 @@ const App = () => (
                   <Dashboard />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="/patients"
+              element={<ProtectedRoute><Patients /></ProtectedRoute>}
+            />
+            <Route
+              path="/analytics"
+              element={<ProtectedRoute><Analytics /></ProtectedRoute>}
             />
             <Route
               path="/admin"

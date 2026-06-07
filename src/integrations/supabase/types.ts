@@ -18,32 +18,106 @@ export type Database = {
         Row: {
           confidence: number
           created_at: string
+          findings: string | null
+          gradcam_path: string | null
           id: string
           image_path: string
           model_used: string
           original_filename: string
+          patient_id: string | null
           prediction: string
           user_id: string
         }
         Insert: {
           confidence: number
           created_at?: string
+          findings?: string | null
+          gradcam_path?: string | null
           id?: string
           image_path: string
           model_used?: string
           original_filename?: string
+          patient_id?: string | null
           prediction: string
           user_id: string
         }
         Update: {
           confidence?: number
           created_at?: string
+          findings?: string | null
+          gradcam_path?: string | null
           id?: string
           image_path?: string
           model_used?: string
           original_filename?: string
+          patient_id?: string | null
           prediction?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          age: number | null
+          created_at: string
+          created_by: string
+          gender: string | null
+          id: string
+          notes: string | null
+          patient_name: string
+          updated_at: string
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          created_by: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          patient_name: string
+          updated_at?: string
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          created_by?: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          patient_name?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, BarChart3, X, History, Settings, User } from "lucide-react";
+import { Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X, History, Settings, User, Users, BarChart3, Download } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { generateReport } from "@/lib/report";
 
 interface AnalysisResult {
   prediction: string;
@@ -163,6 +164,12 @@ const Dashboard = () => {
             >
               <History className="mr-2 h-4 w-4" />
               History
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/patients"><Users className="mr-2 h-4 w-4" />Patients</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</Link>
             </Button>
             {userRole === "admin" && (
               <Button variant="ghost" size="sm" asChild>
@@ -327,6 +334,24 @@ const Dashboard = () => {
                         <span className="text-muted-foreground">Image</span>
                         <span className="truncate text-foreground">{selectedFile?.name}</span>
                       </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => result && generateReport({
+                          prediction: result.prediction,
+                          confidence: result.confidence,
+                          findings: result.findings,
+                          timestamp: result.timestamp,
+                          filename: selectedFile?.name || "xray.jpg",
+                          imageDataUrl: preview,
+                          practitioner: profile?.full_name || user?.email,
+                        })}
+                      >
+                        <Download className="mr-2 h-4 w-4" /> Download PDF Report
+                      </Button>
                     </div>
 
                     <p className="text-xs text-muted-foreground">⚠️ This is an AI-assisted analysis and should not replace professional medical diagnosis.</p>

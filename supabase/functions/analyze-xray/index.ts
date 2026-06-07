@@ -110,7 +110,14 @@ serve(async (req) => {
       original_filename: originalFilename || "unknown.jpg",
       prediction: analysis.prediction,
       confidence: analysis.confidence,
+      findings: analysis.findings,
       model_used: "MobileNetV2 (AI-assisted)",
+    });
+
+    await supabase.from("audit_logs").insert({
+      user_id: user.id,
+      action: "analyze_xray",
+      details: { filename: originalFilename, prediction: analysis.prediction, confidence: analysis.confidence },
     });
 
     if (insertError) {
