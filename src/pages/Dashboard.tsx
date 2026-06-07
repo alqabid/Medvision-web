@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X, History, Settings, User, Users, BarChart3, Download } from "lucide-react";
+import { Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X, History, Settings, User, Users, BarChart3, Download, Database, ScrollText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -170,6 +170,12 @@ const Dashboard = () => {
             </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/records"><Database className="mr-2 h-4 w-4" />Records</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/audit"><ScrollText className="mr-2 h-4 w-4" />Audit</Link>
             </Button>
             {userRole === "admin" && (
               <Button variant="ghost" size="sm" asChild>
