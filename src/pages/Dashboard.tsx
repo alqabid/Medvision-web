@@ -336,6 +336,24 @@ const Dashboard = () => {
                       </div>
                     </div>
 
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => result && generateReport({
+                          prediction: result.prediction,
+                          confidence: result.confidence,
+                          findings: result.findings,
+                          timestamp: result.timestamp,
+                          filename: selectedFile?.name || "xray.jpg",
+                          imageDataUrl: preview,
+                          practitioner: profile?.full_name || user?.email,
+                        })}
+                      >
+                        <Download className="mr-2 h-4 w-4" /> Download PDF Report
+                      </Button>
+                    </div>
+
                     <p className="text-xs text-muted-foreground">⚠️ This is an AI-assisted analysis and should not replace professional medical diagnosis.</p>
                   </motion.div>
                 ) : (
