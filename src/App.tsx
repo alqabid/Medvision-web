@@ -14,6 +14,9 @@ import Patients from "./pages/Patients";
 import Analytics from "./pages/Analytics";
 import Records from "./pages/Records";
 import AuditLogs from "./pages/AuditLogs";
+import Settings from "./pages/Settings";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +32,12 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route
+              path="/settings"
+              element={<ProtectedRoute><Settings /></ProtectedRoute>}
+            />
             <Route
               path="/dashboard"
               element={
