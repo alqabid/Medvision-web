@@ -84,7 +84,7 @@ const Admin = () => {
     fetchAll();
   };
   const toggleModel = async (id: string, field: "is_active" | "is_default", value: boolean) => {
-    await supabase.from("ai_models").update({ [field]: value }).eq("id", id);
+    await supabase.from("ai_models").update({ [field]: value } as any).eq("id", id);
     fetchAll();
   };
   const deleteModel = async (id: string) => {
