@@ -39,6 +39,7 @@ const App = () => (
               element={<ProtectedRoute><Settings /></ProtectedRoute>}
             />
             <Route
+              path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Dashboard />
