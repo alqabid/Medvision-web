@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_models: {
+        Row: {
+          api_key_secret_name: string | null
+          created_at: string
+          endpoint: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          model_identifier: string | null
+          name: string
+          notes: string | null
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_secret_name?: string | null
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          model_identifier?: string | null
+          name: string
+          notes?: string | null
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_secret_name?: string | null
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          model_identifier?: string | null
+          name?: string
+          notes?: string | null
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       analyses: {
         Row: {
           confidence: number
@@ -88,6 +130,36 @@ export type Database = {
         }
         Relationships: []
       }
+      diseases: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          severity?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           age: number | null
@@ -145,6 +217,30 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
         }
         Relationships: []
       }
