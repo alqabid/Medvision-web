@@ -32,8 +32,13 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
-              path="/dashboard"
+              path="/settings"
+              element={<ProtectedRoute><Settings /></ProtectedRoute>}
+            />
+            <Route
               element={
                 <ProtectedRoute>
                   <Dashboard />
