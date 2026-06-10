@@ -185,6 +185,9 @@ const Dashboard = () => {
                 </Link>
               </Button>
             )}
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link>
+            </Button>
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="hidden text-foreground sm:inline">{profile?.full_name || user?.email}</span>
