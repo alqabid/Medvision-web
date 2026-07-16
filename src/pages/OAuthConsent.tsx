@@ -11,8 +11,7 @@ type OAuthNamespace = {
 };
 
 function oauth(): OAuthNamespace {
-  // @ts-expect-error beta namespace
-  return supabase.auth.oauth as OAuthNamespace;
+  return (supabase.auth as unknown as { oauth: OAuthNamespace }).oauth;
 }
 
 export default function OAuthConsent() {
