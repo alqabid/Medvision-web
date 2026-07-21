@@ -15,6 +15,7 @@ interface AnalysisResult {
   findings: string;
   timestamp: string;
   classProbabilities?: Record<string, number>;
+  heatmapDataUrl?: string;
 }
 
 interface AnalysisRecord {
@@ -136,6 +137,9 @@ const Dashboard = () => {
         findings: data.findings,
         timestamp: new Date().toLocaleString(),
         classProbabilities: data.class_probabilities,
+        heatmapDataUrl: data.heatmap_base64
+          ? `data:image/png;base64,${data.heatmap_base64}`
+          : undefined,
       });
 
       fetchHistory(); // Refresh history
@@ -352,6 +356,33 @@ const Dashboard = () => {
                             <Progress value={prob} className="h-1.5" />
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {result.prediction !== "Invalid" && result.heatmapDataUrl && (
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-foreground">Grad-CAM Heatmap</p>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          Highlighted regions show what most influenced the model's prediction.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <img
+                              src={preview ?? ""}
+                              alt="Original X-ray"
+                              className="w-full rounded-lg border border-border object-contain bg-foreground/5"
+                            />
+                            <p className="mt-1 text-center text-xs text-muted-foreground">Original</p>
+                          </div>
+                          <div>
+                            <img
+                              src={result.heatmapDataUrl}
+                              alt="Grad-CAM heatmap"
+                              className="w-full rounded-lg border border-border object-contain bg-foreground/5"
+                            />
+                            <p className="mt-1 text-center text-xs text-muted-foreground">Heatmap</p>
+                          </div>
+                        </div>
                       </div>
                     )}
 
