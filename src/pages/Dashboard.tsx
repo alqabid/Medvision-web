@@ -246,11 +246,13 @@ const Dashboard = () => {
                         <td className="py-3 text-foreground">{record.original_filename}</td>
                         <td className="py-3">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                            record.prediction === "Pneumonia"
-                              ? "bg-destructive/10 text-destructive"
-                              : "bg-success/10 text-success"
+                            record.prediction === "Normal"
+                              ? "bg-success/10 text-success"
+                              : record.prediction === "Invalid"
+                              ? "bg-warning/10 text-warning"
+                              : "bg-destructive/10 text-destructive"
                           }`}>
-                            {record.prediction === "Pneumonia" ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                            {record.prediction === "Normal" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
                             {record.prediction}
                           </span>
                         </td>
@@ -314,23 +316,19 @@ const Dashboard = () => {
                   </motion.div>
                 ) : result ? (
                   <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
-                    <div className={`flex items-center gap-4 rounded-lg border p-4 ${
-                      result.prediction === "Pneumonia" ? "border-destructive/20 bg-destructive/10" :
-                      result.prediction === "Invalid" ? "border-warning/20 bg-warning/10" :
-                      "border-success/20 bg-success/10"
-                    }`}>
-                      {result.prediction === "Pneumonia" ? (
-                        <AlertTriangle className="h-8 w-8 text-destructive" />
-                      ) : result.prediction === "Invalid" ? (
-                        <AlertTriangle className="h-8 w-8 text-warning" />
-                      ) : (
-                        <CheckCircle2 className="h-8 w-8 text-success" />
-                      )}
-                      <div>
-                        <p className="font-display text-xl font-bold text-foreground">{result.prediction}</p>
-                        <p className="text-sm text-muted-foreground">{result.findings}</p>
-                      </div>
-                    </div>
+                    {(() => {
+                      const style = getResultStyle(result.prediction);
+                      const StyleIcon = style.icon;
+                      return (
+                        <div className={`flex items-center gap-4 rounded-lg border p-4 ${style.boxClass}`}>
+                          <StyleIcon className={`h-8 w-8 ${style.iconClass}`} />
+                          <div>
+                            <p className="font-display text-xl font-bold text-foreground">{result.prediction}</p>
+                            <p className="text-sm text-muted-foreground">{result.findings}</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {result.prediction !== "Invalid" && (
                       <div>
@@ -342,10 +340,25 @@ const Dashboard = () => {
                       </div>
                     )}
 
+                    {result.prediction !== "Invalid" && result.classProbabilities && (
+                      <div className="space-y-2 rounded-lg bg-muted/50 p-4">
+                        <p className="mb-2 text-sm font-medium text-foreground">Class Breakdown</p>
+                        {Object.entries(result.classProbabilities).map(([className, prob]) => (
+                          <div key={className} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">{className}</span>
+                              <span className="text-foreground">{prob}%</span>
+                            </div>
+                            <Progress value={prob} className="h-1.5" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Model</span>
-                        <span className="text-foreground">MobileNetV2 (AI-assisted)</span>
+                        <span className="text-foreground">MobileNetV2 (3-class, fine-tuned)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Timestamp</span>
