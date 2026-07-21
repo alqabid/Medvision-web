@@ -15,6 +15,7 @@ interface AnalysisResult {
   findings: string;
   timestamp: string;
   classProbabilities?: Record<string, number>;
+  heatmapDataUrl?: string;
 }
 
 interface AnalysisRecord {
@@ -136,6 +137,9 @@ const Dashboard = () => {
         findings: data.findings,
         timestamp: new Date().toLocaleString(),
         classProbabilities: data.class_probabilities,
+        heatmapDataUrl: data.heatmap_base64
+          ? `data:image/png;base64,${data.heatmap_base64}`
+          : undefined,
       });
 
       fetchHistory(); // Refresh history
