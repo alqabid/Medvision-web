@@ -14,6 +14,7 @@ interface AnalysisResult {
   confidence: number;
   findings: string;
   timestamp: string;
+  classProbabilities?: Record<string, number>;
 }
 
 interface AnalysisRecord {
@@ -24,6 +25,16 @@ interface AnalysisRecord {
   model_used: string;
   created_at: string;
 }
+
+const getResultStyle = (prediction: string) => {
+  if (prediction === "Normal") {
+    return { icon: CheckCircle2, iconClass: "text-success", boxClass: "border-success/20 bg-success/10" };
+  }
+  if (prediction === "Invalid") {
+    return { icon: AlertTriangle, iconClass: "text-warning", boxClass: "border-warning/20 bg-warning/10" };
+  }
+  return { icon: AlertTriangle, iconClass: "text-destructive", boxClass: "border-destructive/20 bg-destructive/10" };
+};
 
 const Dashboard = () => {
   const { user, userRole, signOut } = useAuth();
@@ -123,7 +134,8 @@ const Dashboard = () => {
         prediction: data.prediction,
         confidence: data.confidence,
         findings: data.findings,
-        timestamp: new Date(data.timestamp).toLocaleString(),
+        timestamp: new Date().toLocaleString(),
+        classProbabilities: data.class_probabilities,
       });
 
       fetchHistory(); // Refresh history
