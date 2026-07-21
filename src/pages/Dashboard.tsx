@@ -359,6 +359,33 @@ const Dashboard = () => {
                       </div>
                     )}
 
+                    {result.prediction !== "Invalid" && result.heatmapDataUrl && (
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-foreground">Grad-CAM Heatmap</p>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          Highlighted regions show what most influenced the model's prediction.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <img
+                              src={preview ?? ""}
+                              alt="Original X-ray"
+                              className="w-full rounded-lg border border-border object-contain bg-foreground/5"
+                            />
+                            <p className="mt-1 text-center text-xs text-muted-foreground">Original</p>
+                          </div>
+                          <div>
+                            <img
+                              src={result.heatmapDataUrl}
+                              alt="Grad-CAM heatmap"
+                              className="w-full rounded-lg border border-border object-contain bg-foreground/5"
+                            />
+                            <p className="mt-1 text-center text-xs text-muted-foreground">Heatmap</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Model</span>
