@@ -109,36 +109,48 @@ const Dashboard = () => {
         throw new Error("Failed to upload image: " + uploadError.message);
       }
 
-      // Convert to base64 for AI analysis
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          resolve(result.split(",")[1]); // Remove data:image/...;base64, prefix
-        };
-        reader.readAsDataURL(selectedFile);
-      });
-      const imageBase64 = await base64Promise;
+      // Call the FastAPI backend directly
+      const apiUrl = import.meta.env.VITE_MEDVISION_API_URL || "http://localhost:8000";
+      const formData = new FormData();
+      formData.append("file", selectedFile);
 
-      // Call edge function for AI analysis
-      const { data, error } = await supabase.functions.invoke("analyze-xray", {
-        body: {
-          imageBase64,
-          imagePath: filePath,
-          originalFilename: selectedFile.name,
-        },
+      const response = await fetch(`${apiUrl}/predict`, {
+        method: "POST",
+        body: formData,
       });
 
-      if (error) throw new Error(error.message);
+      if (!response.ok) {
+        throw new Error("Model analysis failed. Is the backend server running?");
+      }
+
+      const modelResult = await response.json();
+      // modelResult: { prediction, confidence, class_probabilities, heatmap_base64, model_used }
+
+      const findings = `Model classified this scan as ${modelResult.prediction} with ${modelResult.confidence}% confidence.`;
+
+      // Save the analysis record directly (allowed by the "Users can insert own analyses" policy)
+      const { error: insertError } = await supabase.from("analyses").insert({
+        user_id: user.id,
+        image_path: filePath,
+        original_filename: selectedFile.name,
+        prediction: modelResult.prediction,
+        confidence: modelResult.confidence,
+        findings,
+        model_used: modelResult.model_used || "MobileNetV2 (3-class, fine-tuned)",
+      });
+
+      if (insertError) {
+        console.error("DB insert error:", insertError);
+      }
 
       setResult({
-        prediction: data.prediction,
-        confidence: data.confidence,
-        findings: data.findings,
+        prediction: modelResult.prediction,
+        confidence: modelResult.confidence,
+        findings,
         timestamp: new Date().toLocaleString(),
-        classProbabilities: data.class_probabilities,
-        heatmapDataUrl: data.heatmap_base64
-          ? `data:image/png;base64,${data.heatmap_base64}`
+        classProbabilities: modelResult.class_probabilities,
+        heatmapDataUrl: modelResult.heatmap_base64
+          ? `data:image/png;base64,${modelResult.heatmap_base64}`
           : undefined,
       });
 
