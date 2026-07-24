@@ -498,6 +498,36 @@ Model: ${result.modelUsed}
                             <p className="mt-1 text-center text-xs text-muted-foreground">Heatmap</p>
                           </div>
                         </div>
+
+                        {/* Explanation panel — teaches the clinician what the colors mean */}
+                        <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
+                          <p className="font-medium text-foreground">How to read this heatmap</p>
+                          <p className="text-muted-foreground">
+                            This overlay implies that the highlighted areas of the lung are the regions the AI focused on when arriving at a <span className="font-semibold text-foreground">{result.prediction}</span> diagnosis — in other words, <span className="italic">these portions are the affected / most influential parts</span> of the X-ray.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-3 pt-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block h-3 w-6 rounded" style={{ background: "linear-gradient(90deg, #b91c1c, #ef4444)" }} />
+                              <span className="text-foreground">Red / hot</span>
+                              <span className="text-muted-foreground">— strongest evidence, most affected</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block h-3 w-6 rounded" style={{ background: "linear-gradient(90deg, #f59e0b, #fde047)" }} />
+                              <span className="text-foreground">Yellow / warm</span>
+                              <span className="text-muted-foreground">— moderate contribution</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block h-3 w-6 rounded" style={{ background: "linear-gradient(90deg, #1e3a8a, #3b82f6)" }} />
+                              <span className="text-foreground">Blue / cool</span>
+                              <span className="text-muted-foreground">— little to no influence</span>
+                            </span>
+                          </div>
+                          {result.prediction === "Normal" ? (
+                            <p className="text-muted-foreground">Because the diagnosis is <span className="font-semibold text-foreground">Normal</span>, the highlighted regions represent healthy lung fields the model verified rather than signs of disease.</p>
+                          ) : (
+                            <p className="text-muted-foreground">The hotter regions likely correspond to opacities, consolidations, or other patterns consistent with <span className="font-semibold text-foreground">{result.prediction}</span>. Always correlate with clinical findings.</p>
+                          )}
+                        </div>
                       </div>
                     )}
 
