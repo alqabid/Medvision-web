@@ -51,7 +51,7 @@ const Records = () => {
   const [rows, setRows] = useState<AnalysisRow[]>([]);
   const [patients, setPatients] = useState<Record<string, PatientRow>>({});
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "Pneumonia" | "Normal">("all");
+  const [filter, setFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchAll(); }, [user]);
@@ -67,6 +67,12 @@ const Records = () => {
     if (pats) setPatients(Object.fromEntries(pats.map(p => [p.id, p as PatientRow])));
     setLoading(false);
   };
+
+  const classCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach(r => map.set(r.prediction, (map.get(r.prediction) ?? 0) + 1));
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [rows]);
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
