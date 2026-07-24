@@ -109,12 +109,10 @@ const Records = () => {
 
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
-  const stats = useMemo(() => ({
-    total: rows.length,
-    pneumonia: rows.filter(r => r.prediction === "Pneumonia").length,
-    normal: rows.filter(r => r.prediction === "Normal").length,
-    avg: rows.length ? (rows.reduce((s, r) => s + Number(r.confidence), 0) / rows.length).toFixed(1) : "0",
-  }), [rows]);
+  const avgConf = useMemo(
+    () => rows.length ? (rows.reduce((s, r) => s + Number(r.confidence), 0) / rows.length).toFixed(1) : "0",
+    [rows]
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -151,21 +149,40 @@ const Records = () => {
           </div>
         </motion.div>
 
+        {/* Overview cards — total + avg confidence, then one card per class */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: "Total Records", value: stats.total, icon: FileImage, color: "text-secondary" },
-            { label: "Pneumonia", value: stats.pneumonia, icon: AlertTriangle, color: "text-destructive" },
-            { label: "Normal", value: stats.normal, icon: CheckCircle2, color: "text-success" },
-            { label: "Avg Confidence", value: `${stats.avg}%`, icon: Filter, color: "text-info" },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl border border-border bg-card p-5 shadow-card">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{s.label}</span>
-                <s.icon className={`h-5 w-5 ${s.color}`} />
-              </div>
-              <p className="mt-2 font-display text-3xl font-bold text-foreground">{s.value}</p>
+          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Records</span>
+              <FileImage className="h-5 w-5 text-secondary" />
             </div>
-          ))}
+            <p className="mt-2 font-display text-3xl font-bold text-foreground">{rows.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Avg Confidence</span>
+              <Filter className="h-5 w-5 text-info" />
+            </div>
+            <p className="mt-2 font-display text-3xl font-bold text-foreground">{avgConf}%</p>
+          </div>
+          {classCounts.slice(0, 6).map(c => {
+            const st = styleFor(c.name);
+            const Icon = st.icon;
+            return (
+              <div key={c.name} className="rounded-xl border border-border bg-card p-5 shadow-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{c.name}</span>
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${st.badge}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <p className="mt-2 font-display text-3xl font-bold text-foreground">{c.value}</p>
+                <p className="text-xs text-muted-foreground">
+                  {rows.length ? ((c.value / rows.length) * 100).toFixed(1) : "0"}% of total
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mb-4 flex flex-wrap gap-3">
@@ -173,15 +190,17 @@ const Records = () => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search by patient, filename, or result…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
-          <Select value={filter} onValueChange={(v: typeof filter) => setFilter(v)}>
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Results</SelectItem>
-              <SelectItem value="Pneumonia">Pneumonia</SelectItem>
-              <SelectItem value="Normal">Normal</SelectItem>
+              <SelectItem value="all">All Classes ({rows.length})</SelectItem>
+              {classCounts.map(c => (
+                <SelectItem key={c.name} value={c.name}>{c.name} ({c.value})</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
+
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-card overflow-x-auto">
           {loading ? (
