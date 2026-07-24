@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateReport } from "@/lib/report";
+import { stripImageMetadata } from "@/lib/stripImageMetadata";
 
 interface AnalysisResult {
   prediction: string;
