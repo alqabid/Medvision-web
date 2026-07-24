@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Shield, LogOut, ArrowLeft, BarChart3, TrendingUp, Activity, FileImage } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,6 +14,18 @@ interface AnalysisRecord {
   created_at: string;
 }
 
+// Deterministic color per class label — falls back to a rotating palette for unknown classes.
+const KNOWN_COLORS: Record<string, string> = {
+  Normal: "hsl(152 60% 42%)",
+  Pneumonia: "hsl(0 72% 55%)",
+  "COVID-19": "hsl(280 65% 55%)",
+  Covid: "hsl(280 65% 55%)",
+  Tuberculosis: "hsl(35 90% 55%)",
+  Invalid: "hsl(220 10% 55%)",
+};
+const PALETTE = ["hsl(210 80% 55%)", "hsl(340 70% 55%)", "hsl(45 85% 55%)", "hsl(170 60% 45%)", "hsl(260 60% 60%)"];
+const colorFor = (label: string, idx: number) => KNOWN_COLORS[label] ?? PALETTE[idx % PALETTE.length];
+
 const Analytics = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -27,25 +39,32 @@ const Analytics = () => {
   }, [user]);
 
   const total = analyses.length;
-  const pneumonia = analyses.filter(a => a.prediction === "Pneumonia").length;
-  const normal = analyses.filter(a => a.prediction === "Normal").length;
   const avgConf = total ? (analyses.reduce((s, a) => s + Number(a.confidence), 0) / total).toFixed(1) : "0";
 
-  // Monthly trend
-  const monthly: Record<string, { month: string; Pneumonia: number; Normal: number }> = {};
-  analyses.forEach(a => {
-    const m = new Date(a.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-    if (!monthly[m]) monthly[m] = { month: m, Pneumonia: 0, Normal: 0 };
-    if (a.prediction === "Pneumonia") monthly[m].Pneumonia++;
-    else if (a.prediction === "Normal") monthly[m].Normal++;
-  });
-  const trendData = Object.values(monthly).slice(-6);
+  // Dynamic class aggregation — every distinct prediction becomes its own class.
+  const classCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    analyses.forEach(a => map.set(a.prediction, (map.get(a.prediction) ?? 0) + 1));
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [analyses]);
 
-  const pieData = [
-    { name: "Pneumonia", value: pneumonia },
-    { name: "Normal", value: normal },
-  ];
-  const COLORS = ["hsl(0 72% 55%)", "hsl(152 60% 42%)"];
+  const abnormal = useMemo(
+    () => analyses.filter(a => a.prediction !== "Normal" && a.prediction !== "Invalid").length,
+    [analyses]
+  );
+
+  // Monthly trend across every class
+  const trendData = useMemo(() => {
+    const monthly: Record<string, Record<string, number | string>> = {};
+    analyses.forEach(a => {
+      const m = new Date(a.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      if (!monthly[m]) monthly[m] = { month: m };
+      monthly[m][a.prediction] = ((monthly[m][a.prediction] as number) ?? 0) + 1;
+    });
+    return Object.values(monthly).slice(-6);
+  }, [analyses]);
 
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
@@ -71,15 +90,15 @@ const Analytics = () => {
       <main className="mx-auto max-w-7xl px-6 py-10">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="mb-2 font-display text-3xl font-bold text-foreground flex items-center gap-2"><BarChart3 className="h-7 w-7 text-secondary" />Analytics</h1>
-          <p className="text-muted-foreground">Insights into your X-ray analysis history.</p>
+          <p className="text-muted-foreground">Multi-class insights across every diagnosis your model has produced.</p>
         </motion.div>
 
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: "Total Scans", value: total, icon: FileImage, color: "text-secondary" },
-            { label: "Pneumonia Detected", value: pneumonia, icon: Activity, color: "text-destructive" },
-            { label: "Normal Results", value: normal, icon: TrendingUp, color: "text-success" },
-            { label: "Avg. Confidence", value: `${avgConf}%`, icon: BarChart3, color: "text-info" },
+            { label: "Distinct Classes", value: classCounts.length, icon: BarChart3, color: "text-info" },
+            { label: "Abnormal Findings", value: abnormal, icon: Activity, color: "text-destructive" },
+            { label: "Avg. Confidence", value: `${avgConf}%`, icon: TrendingUp, color: "text-success" },
           ].map(stat => (
             <div key={stat.label} className="rounded-xl border border-border bg-card p-5 shadow-card">
               <div className="flex items-center justify-between">
@@ -91,9 +110,38 @@ const Analytics = () => {
           ))}
         </div>
 
+        {/* Per-class summary strip */}
+        <div className="mb-8 rounded-xl border border-border bg-card p-6 shadow-card">
+          <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Diagnoses by Class</h2>
+          {classCounts.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">No data yet.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {classCounts.map((c, i) => {
+                const pct = total ? ((c.value / total) * 100).toFixed(1) : "0";
+                return (
+                  <div key={c.name} className="rounded-lg border border-border/60 bg-muted/30 p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full" style={{ background: colorFor(c.name, i) }} />
+                        <span className="font-medium text-foreground">{c.name}</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{pct}%</span>
+                    </div>
+                    <p className="font-display text-2xl font-bold text-foreground">{c.value}</p>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border/50">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: colorFor(c.name, i) }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-            <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Monthly Predictions</h2>
+            <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Monthly Predictions (all classes)</h2>
             {trendData.length === 0 ? (
               <p className="py-12 text-center text-muted-foreground">No data yet.</p>
             ) : (
@@ -101,29 +149,49 @@ const Analytics = () => {
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
                   <Legend />
-                  <Line type="monotone" dataKey="Pneumonia" stroke="hsl(0 72% 55%)" strokeWidth={2} />
-                  <Line type="monotone" dataKey="Normal" stroke="hsl(152 60% 42%)" strokeWidth={2} />
+                  {classCounts.map((c, i) => (
+                    <Line key={c.name} type="monotone" dataKey={c.name} stroke={colorFor(c.name, i)} strokeWidth={2} />
+                  ))}
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
 
           <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-            <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Prediction Distribution</h2>
+            <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Class Distribution</h2>
             {total === 0 ? (
               <p className="py-12 text-center text-muted-foreground">No data yet.</p>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} label>
-                    {pieData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+                  <Pie data={classCounts} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} label>
+                    {classCounts.map((c, i) => <Cell key={c.name} fill={colorFor(c.name, i)} />)}
                   </Pie>
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
                   <Legend />
                 </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-card">
+            <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Volume by Class</h2>
+            {classCounts.length === 0 ? (
+              <p className="py-12 text-center text-muted-foreground">No data yet.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={classCounts}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {classCounts.map((c, i) => <Cell key={c.name} fill={colorFor(c.name, i)} />)}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>
