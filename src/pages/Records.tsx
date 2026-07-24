@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Shield, LogOut, ArrowLeft, Search, Download, FileImage,
-  AlertTriangle, CheckCircle2, Database, Filter,
+  AlertTriangle, CheckCircle2, Database, Filter, Activity,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCSV } from "@/lib/csv";
 import { toast } from "sonner";
+
+// Consistent per-class styling — supports any number of classes the model emits.
+const CLASS_STYLES: Record<string, { badge: string; icon: typeof CheckCircle2 }> = {
+  Normal: { badge: "bg-success/10 text-success", icon: CheckCircle2 },
+  Pneumonia: { badge: "bg-destructive/10 text-destructive", icon: AlertTriangle },
+  "COVID-19": { badge: "bg-purple-500/10 text-purple-500", icon: Activity },
+  Covid: { badge: "bg-purple-500/10 text-purple-500", icon: Activity },
+  Tuberculosis: { badge: "bg-orange-500/10 text-orange-500", icon: Activity },
+  Invalid: { badge: "bg-muted text-muted-foreground", icon: AlertTriangle },
+};
+const styleFor = (p: string) => CLASS_STYLES[p] ?? { badge: "bg-info/10 text-info", icon: Activity };
 
 interface AnalysisRow {
   id: string;
