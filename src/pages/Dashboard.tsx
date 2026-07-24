@@ -148,13 +148,19 @@ const Dashboard = () => {
     setIsAnalyzing(true);
 
     try {
+      // Strip any camera/EXIF metadata before uploading
+      const cleanFile = await stripImageMetadata(selectedFile);
+
+      // Upload image to storage
       const filePath = `${user.id}/${Date.now()}-${selectedFile.name}`;
-      const { error: uploadError } = await supabase.storage.from("xray-images").upload(filePath, selectedFile);
+      const { error: uploadError } = await supabase.storage
+        .from("xray-images")
+        .upload(filePath, cleanFile);
       if (uploadError) throw new Error("Failed to upload image: " + uploadError.message);
 
       const apiUrl = import.meta.env.VITE_MEDVISION_API_URL || "http://localhost:8000";
       const formData = new FormData();
-      formData.append("file", selectedFile);
+      formData.append("file", cleanFile);
       const response = await fetch(`${apiUrl}/predict`, { method: "POST", body: formData });
       if (!response.ok) throw new Error("Model analysis failed. Is the backend server running?");
 
