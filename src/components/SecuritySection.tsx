@@ -14,8 +14,8 @@ const securityFeatures = [
   },
   {
     icon: Lock,
-    title: "AES-256 Encryption",
-    description: "All medical images encrypted at rest using AES-256 standard.",
+    title: "Encrypted at Rest",
+    description: "Medical images are stored on Supabase infrastructure, which encrypts data at rest by default.",
   },
   {
     icon: Server,
