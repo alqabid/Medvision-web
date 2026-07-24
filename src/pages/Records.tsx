@@ -220,23 +220,25 @@ const Records = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(r => (
+                {filtered.map(r => {
+                  const st = styleFor(r.prediction);
+                  const Icon = st.icon;
+                  return (
                   <tr key={r.id} className="border-b border-border/50 last:border-0">
                     <td className="py-3 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="py-3 text-foreground">{r.patient_id ? patients[r.patient_id]?.patient_name ?? "—" : "—"}</td>
                     <td className="py-3 text-muted-foreground max-w-[200px] truncate">{r.original_filename}</td>
                     <td className="py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                        r.prediction === "Pneumonia" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"
-                      }`}>
-                        {r.prediction === "Pneumonia" ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${st.badge}`}>
+                        <Icon className="h-3 w-3" />
                         {r.prediction}
                       </span>
                     </td>
                     <td className="py-3 text-foreground">{Number(r.confidence).toFixed(1)}%</td>
                     <td className="py-3 text-muted-foreground">{r.model_used}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
