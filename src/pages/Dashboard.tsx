@@ -66,7 +66,7 @@ const Dashboard = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<AnalysisRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [profile, setProfile] = useState<{ full_name: string; email: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; email: string; hospital: string | null } | null>(null);
 
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [patientMode, setPatientMode] = useState<"existing" | "new">("existing");
@@ -82,7 +82,7 @@ const Dashboard = () => {
 
   const fetchProfile = async () => {
     if (!user) return;
-    const { data } = await supabase.from("profiles").select("full_name, email").eq("user_id", user.id).maybeSingle();
+    const { data } = await supabase.from("profiles").select("full_name, email, hospital").eq("user_id", user.id).maybeSingle();
     if (data) setProfile(data);
   };
 
@@ -270,7 +270,12 @@ Model: ${result.modelUsed}
             <Button variant="ghost" size="sm" asChild><Link to="/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link></Button>
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="hidden text-foreground sm:inline">{profile?.full_name || user?.email}</span>
+              <div className="hidden leading-tight sm:block">
+                <div className="text-foreground">{profile?.full_name || user?.email}</div>
+                {profile?.hospital && (
+                  <div className="text-xs text-muted-foreground">{profile.hospital}</div>
+                )}
+              </div>
               <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-xs capitalize text-secondary">{userRole?.replace("_", " ") || "user"}</span>
             </div>
             <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut className="mr-2 h-4 w-4" />Sign Out</Button>
@@ -562,6 +567,7 @@ Model: ${result.modelUsed}
                           patientGender: activePatient?.gender ?? undefined,
                           patientNotes: activePatient?.notes ?? undefined,
                           practitioner: profile?.full_name || user?.email,
+                          hospital: profile?.hospital || undefined,
                           modelUsed: result.modelUsed,
                         })}
                       >
