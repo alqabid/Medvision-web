@@ -14,6 +14,7 @@ interface ReportData {
   patientGender?: string;
   patientNotes?: string;
   practitioner?: string;
+  hospital?: string;
   modelUsed?: string;
 }
 
@@ -51,6 +52,7 @@ export const generateReport = (data: ReportData) => {
     ["Patient Name", data.patientName || "Not specified"],
     ["Age / Gender", `${data.patientAge ?? "—"}  /  ${data.patientGender || "—"}`],
     ["Attending Practitioner", data.practitioner || "Not specified"],
+    ["Hospital", data.hospital || "Not specified"],
     ["Clinical Notes", data.patientNotes || "None"],
   ];
   patientRows.forEach(([k, v]) => {
