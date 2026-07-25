@@ -4,8 +4,8 @@ import { Shield, Lock, Eye, Key, Server, FileX } from "lucide-react";
 const securityFeatures = [
   {
     icon: Key,
-    title: "JWT Authentication",
-    description: "Secure token-based authentication with bcrypt password hashing.",
+    title: "Two-Factor Login",
+    description: "Every sign-in requires your password plus a one-time code emailed to you — no trusted-device shortcuts.",
   },
   {
     icon: Shield,
