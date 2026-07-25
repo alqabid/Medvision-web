@@ -24,8 +24,8 @@ const features = [
   },
   {
     icon: Lock,
-    title: "End-to-End Encryption",
-    description: "AES-256 encryption at rest, TLS in transit. EXIF metadata automatically stripped.",
+    title: "Encryption & Anonymization",
+    description: "Data encrypted at rest (Supabase infrastructure) and in transit (TLS). EXIF metadata automatically stripped from every upload.",
   },
   {
     icon: BarChart3,

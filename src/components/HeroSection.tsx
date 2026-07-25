@@ -22,7 +22,7 @@ const HeroSection = () => {
         >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-secondary/30 bg-secondary/10 px-4 py-1.5 text-sm text-secondary-foreground/80">
             <ShieldCheck className="h-4 w-4 text-accent" />
-            <span className="text-accent">HIPAA-Compliant AI Diagnostics</span>
+            <span className="text-accent">AI Diagnostics for Research & Education</span>
           </div>
 
           <h1 className="mb-6 font-display text-5xl font-bold leading-tight tracking-tight text-primary-foreground md:text-7xl">
@@ -67,9 +67,9 @@ const HeroSection = () => {
           className="mt-20 grid w-full max-w-2xl grid-cols-3 gap-8"
         >
           {[
-            { value: "96.8%", label: "Accuracy" },
+            { value: "78.4%", label: "Test Accuracy" },
             { value: "<3s", label: "Analysis Time" },
-            { value: "AES-256", label: "Encryption" },
+            { value: "3-Class", label: "Classification" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="font-display text-3xl font-bold text-accent md:text-4xl">{stat.value}</div>

@@ -18,7 +18,7 @@ const steps = [
     icon: FileCheck,
     step: "03",
     title: "View Results",
-    description: "Receive a pneumonia/normal classification with a detailed confidence score.",
+    description: "Receive a Bacterial/Viral/Normal classification with a detailed confidence breakdown.",
   },
   {
     icon: History,
