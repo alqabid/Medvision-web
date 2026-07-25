@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Shield, Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { Shield, Eye, EyeOff, Mail, Lock, User, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,20 +9,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
+// Fixed hospital list. To add/remove hospitals, edit this array.
+const HOSPITALS = [
+  "Korle Bu Teaching Hospital",
+  "Komfo Anokye Teaching Hospital",
+  "37 Military Hospital",
+  "Ridge Hospital",
+  "Tamale Teaching Hospital",
+  "Cape Coast Teaching Hospital",
+  "Effia Nkwanta Regional Hospital",
+  "Other",
+];
+
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
+  const [hospital, setHospital] = useState("");
+  const [otherHospital, setOtherHospital] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email || !password || !role) {
+    const finalHospital = hospital === "Other" ? otherHospital.trim() : hospital;
+
+    if (!fullName || !email || !password || !role || !hospital) {
       toast.error("Please fill in all fields");
+      return;
+    }
+    if (hospital === "Other" && !otherHospital.trim()) {
+      toast.error("Please enter your hospital's name");
       return;
     }
     if (password.length < 6) {
@@ -30,7 +50,7 @@ const Signup = () => {
       return;
     }
     setIsLoading(true);
-    const { error } = await signUp(email, password, fullName, role);
+    const { error } = await signUp(email, password, fullName, role, finalHospital);
     setIsLoading(false);
     if (error) {
       toast.error(error.message);
@@ -85,6 +105,30 @@ const Signup = () => {
                   <SelectItem value="authorized_user">Authorized User</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hospital">Hospital</Label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Select value={hospital} onValueChange={setHospital}>
+                  <SelectTrigger className="pl-10">
+                    <SelectValue placeholder="Select your hospital" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOSPITALS.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {hospital === "Other" && (
+                <Input
+                  placeholder="Enter your hospital's name"
+                  value={otherHospital}
+                  onChange={(e) => setOtherHospital(e.target.value)}
+                  className="mt-2"
+                />
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
