@@ -52,7 +52,7 @@ const HeroSection = () => {
               asChild
               variant="outline"
               size="lg"
-              className="h-12 border-primary-foreground/20 px-8 text-primary-foreground hover:bg-primary-foreground/10"
+              className="h-12 border-2 border-primary-foreground/80 bg-primary-foreground/5 px-8 text-base font-medium text-primary-foreground backdrop-blur-sm transition-colors hover:bg-primary-foreground/15 hover:text-primary-foreground"
             >
               <a href="#how-it-works">See How It Works</a>
             </Button>
