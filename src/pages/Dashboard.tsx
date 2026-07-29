@@ -278,6 +278,7 @@ Model: ${result.modelUsed}
               </div>
               <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-xs capitalize text-secondary">{userRole?.replace("_", " ") || "user"}</span>
             </div>
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut className="mr-2 h-4 w-4" />Sign Out</Button>
           </div>
         </div>
