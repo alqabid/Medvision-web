@@ -236,7 +236,6 @@ const Admin = () => {
                   <Select value={newModel.provider} onValueChange={(v) => setNewModel({ ...newModel, provider: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="lovable">Lovable AI</SelectItem>
                       <SelectItem value="openai">OpenAI</SelectItem>
                       <SelectItem value="huggingface">HuggingFace</SelectItem>
                       <SelectItem value="custom">Custom Endpoint</SelectItem>
