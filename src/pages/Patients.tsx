@@ -138,14 +138,24 @@ const Patients = () => {
               </thead>
               <tbody>
                 {filtered.map(p => (
-                  <tr key={p.id} className="border-b border-border/50 last:border-0">
+                  <tr
+                    key={p.id}
+                    onClick={() => navigate(`/patients/${p.id}`)}
+                    className="cursor-pointer border-b border-border/50 last:border-0 hover:bg-muted/50"
+                  >
                     <td className="py-3 text-foreground font-medium">{p.patient_name}</td>
                     <td className="py-3 text-foreground">{p.gender || "—"}</td>
                     <td className="py-3 text-foreground">{p.age ?? "—"}</td>
                     <td className="py-3 text-muted-foreground max-w-xs truncate">{p.notes || "—"}</td>
                     <td className="py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
                     <td className="py-3 text-right">
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
