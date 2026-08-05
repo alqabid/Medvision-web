@@ -12,6 +12,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Patients from "./pages/Patients";
+import PatientDetail from "./pages/PatientDetail";
 import Analytics from "./pages/Analytics";
 import Records from "./pages/Records";
 import AuditLogs from "./pages/AuditLogs";
@@ -53,6 +54,10 @@ const App = () => (
             <Route
               path="/patients"
               element={<ProtectedRoute><Patients /></ProtectedRoute>}
+            />
+            <Route
+              path="/patients/:id"
+              element={<ProtectedRoute><PatientDetail /></ProtectedRoute>}
             />
             <Route
               path="/analytics"
