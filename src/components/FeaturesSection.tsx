@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Layers, Eye, FileText, ShieldCheck, Lock, BarChart3, Sparkles } from "lucide-react";
+import { Layers, Eye, FileText, ShieldCheck, Lock, BarChart3 } from "lucide-react";
 import lungsHero from "@/assets/thoracic-lungs-hero.jpg";
 
 const features = [
@@ -123,8 +123,8 @@ const FeaturesSection = () => {
           <div className="space-y-6 lg:col-span-7">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-secondary">
-                  <Sparkles className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-secondary">
+                  <span className="h-2 w-2 rounded-full bg-secondary" />
                   Dual-Modality Clinical Architecture
                 </span>
                 <h2 className="mt-1 font-display text-3xl font-bold text-foreground sm:text-4xl">
