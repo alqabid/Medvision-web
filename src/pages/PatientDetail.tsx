@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, AlertTriangle, CheckCircle2, FileImage } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, FileImage, Activity, Download } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import ClinicalShell from "@/components/ClinicalShell";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getLocalPatients, getLocalAnalyses } from "@/lib/localClinicalStore";
+import { getLocalPatients, getLocalAnalyses, getActiveLocalAccount } from "@/lib/localClinicalStore";
+import { generateReport } from "@/lib/report";
 
 interface Patient {
   id: string;
@@ -38,6 +40,7 @@ const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest C
 
 const PatientDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,16 +94,61 @@ const PatientDetail = () => {
     setLoading(false);
   };
 
+  const handleDownloadReport = (a: AnalysisRecord) => {
+    if (!patient) return;
+    const localAcct = getActiveLocalAccount();
+    let parsedProbs: Record<string, number> | undefined;
+    let parsedNotes = a.findings || "";
+    if (a.findings) {
+      try {
+        const parsed = JSON.parse(a.findings);
+        if (parsed?.class_probabilities) parsedProbs = parsed.class_probabilities;
+        if (parsed?.notes) parsedNotes = parsed.notes;
+      } catch {
+        // ignore
+      }
+    }
+
+    generateReport({
+      modality: a.modality === "ct" ? "ct" : "xray",
+      prediction: a.prediction,
+      confidence: Number(a.confidence),
+      findings: parsedNotes || `Predicted ${a.prediction} (${Number(a.confidence).toFixed(1)}% confidence).`,
+      timestamp: new Date(a.created_at).toLocaleString(),
+      filename: a.original_filename,
+      classProbabilities: parsedProbs,
+      patientName: patient.patient_name,
+      patientAge: patient.age ?? undefined,
+      patientGender: patient.gender ?? undefined,
+      patientNotes: patient.notes ?? undefined,
+      practitioner:
+        (user?.user_metadata?.full_name as string) || localAcct?.full_name || user?.email || "Clinician",
+      hospital: (user?.user_metadata?.hospital as string) || localAcct?.hospital || "Korle Bu Teaching Hospital",
+      modelUsed: a.modality === "ct" ? "Chest CT Oncology Classifier" : "Chest X-Ray Pneumonia Classifier",
+    });
+    toast.success("Clinical PDF report downloaded");
+  };
+
   return (
     <ClinicalShell
       headerRight={
-        <Button variant="outline" size="sm" asChild className="rounded-full">
-          <Link to="/patients"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" />All Patients</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {patient && (
+            <Button size="sm" asChild className="rounded-full bg-[#07221e] px-4 text-[#72f6d5] hover:bg-[#0b352e]">
+              <Link to={`/dashboard?patient=${patient.id}`}>
+                <Activity className="mr-1.5 h-3.5 w-3.5" />
+                Analyze New Scan
+              </Link>
+            </Button>
+          )}
+          <Button variant="outline" size="sm" asChild className="rounded-full">
+            <Link to="/patients"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" />All Patients</Link>
+          </Button>
+        </div>
       }
     >
       {loading ? (
-        <p className="py-12 text-center text-muted-foreground">Loading...</p>
+        <p className="py-12 text-center text-muted-foreground">Loading patient profile...</p>
       ) : !patient ? (
         <p className="py-12 text-center text-muted-foreground">Patient not found.</p>
       ) : (
@@ -124,7 +172,7 @@ const PatientDetail = () => {
             </div>
             <h1 className="font-display text-3xl font-extrabold text-white">{patient.patient_name}</h1>
             {patient.notes && (
-              <p className="mt-2 max-w-2xl text-sm text-white/85">Notes: {patient.notes}</p>
+              <p className="mt-2 max-w-2xl text-sm text-white/85">Clinical Notes: {patient.notes}</p>
             )}
           </motion.div>
 
@@ -134,17 +182,32 @@ const PatientDetail = () => {
             transition={{ delay: 0.1 }}
             className="clinical-surface p-6"
           >
-            <h2 className="mb-4 font-display text-lg font-bold text-card-foreground">Scan History</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-display text-lg font-bold text-card-foreground">
+                Longitudinal Scan History ({analyses.length})
+              </h2>
+            </div>
             {analyses.length === 0 ? (
-              <p className="py-12 text-center text-muted-foreground">
-                No scans recorded for this patient yet. Run an analysis from the Dashboard and select this patient to see it here.
-              </p>
+              <div className="py-12 text-center">
+                <p className="mb-4 text-muted-foreground">
+                  No scans recorded for this patient yet.
+                </p>
+                <Button asChild className="rounded-full bg-[#07221e] text-[#72f6d5] hover:bg-[#0b352e]">
+                  <Link to={`/dashboard?patient=${patient.id}`}>
+                    <Activity className="mr-2 h-4 w-4" />
+                    Analyze First Scan for {patient.patient_name}
+                  </Link>
+                </Button>
+              </div>
             ) : (
               <div className="space-y-3">
                 {analyses.map((a) => {
                   const isCt = a.modality === "ct";
                   return (
-                    <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 transition-colors hover:bg-muted/40">
+                    <div
+                      key={a.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 transition-colors hover:bg-muted/40"
+                    >
                       <div className="flex items-center gap-3.5">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#07221e] text-[#72f6d5]">
                           <FileImage className="h-5 w-5" />
@@ -158,16 +221,36 @@ const PatientDetail = () => {
                             >
                               {formatModalityLabel(a.modality)}
                             </span>
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${resultBadgeClass(a.prediction)}`}>
-                              {a.prediction === "Normal" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${resultBadgeClass(
+                                a.prediction
+                              )}`}
+                            >
+                              {a.prediction === "Normal" ? (
+                                <CheckCircle2 className="h-3 w-3" />
+                              ) : (
+                                <AlertTriangle className="h-3 w-3" />
+                              )}
                               {a.prediction}
                             </span>
-                            <span className="font-mono text-sm font-semibold text-foreground">{a.confidence}% confidence</span>
+                            <span className="font-mono text-sm font-semibold text-foreground">
+                              {Number(a.confidence).toFixed(1)}% confidence
+                            </span>
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground">{a.original_filename} · {new Date(a.created_at).toLocaleString()}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {a.original_filename} · {new Date(a.created_at).toLocaleString()}
+                          </p>
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">{a.model_used}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadReport(a)}
+                        className="rounded-full text-xs"
+                      >
+                        <Download className="mr-1.5 h-3.5 w-3.5 text-secondary" />
+                        PDF Report
+                      </Button>
                     </div>
                   );
                 })}

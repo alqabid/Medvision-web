@@ -3,10 +3,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Activity, Users, Database, BarChart3, ScrollText, Settings,
-  Shield, LogOut, User, Cpu,
+  Shield, LogOut,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
+import { getActiveLocalAccount } from "@/lib/localClinicalStore";
 
 interface ClinicalShellProps {
   children: ReactNode;
@@ -20,7 +21,7 @@ const NAV_ITEMS = [
   { label: "Patients", path: "/patients", icon: Users },
   { label: "Records", path: "/records", icon: Database },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },
-  { label: "Audit", path: "/audit", icon: ScrollText },
+  { label: "Activity", path: "/audit", icon: ScrollText },
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 
@@ -30,18 +31,29 @@ const ClinicalShell = ({
   hospitalName,
   headerRight,
 }: ClinicalShellProps) => {
-  const { user, userRole, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const localAcct = getActiveLocalAccount();
+  const resolvedName =
+    practitionerName ||
+    (user?.user_metadata?.full_name as string) ||
+    localAcct?.full_name ||
+    user?.email ||
+    "Clinician";
+  const resolvedHospital =
+    hospitalName ||
+    (user?.user_metadata?.hospital as string) ||
+    localAcct?.hospital ||
+    (user?.user_metadata?.specialty as string) ||
+    localAcct?.specialty ||
+    "Thoracic Radiology";
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
-
-  const items = userRole === "admin"
-    ? [...NAV_ITEMS, { label: "Admin", path: "/admin", icon: Cpu }]
-    : NAV_ITEMS;
 
   const isActive = (path: string) =>
     location.pathname === path || (path === "/patients" && location.pathname.startsWith("/patients/"));
@@ -49,7 +61,7 @@ const ClinicalShell = ({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1480px] gap-6 px-4 py-5 sm:px-6 lg:px-8">
-        {/* Left Vertical Icon Dock (Medikals-inspired) */}
+        {/* Left Vertical Icon Dock */}
         <aside className="sticky top-5 hidden h-[calc(100vh-2.5rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-[28px] border border-border/60 bg-card py-6 shadow-card lg:flex">
           <Link
             to="/"
@@ -60,7 +72,7 @@ const ClinicalShell = ({
           </Link>
 
           <nav className="flex flex-col items-center gap-2.5" aria-label="Primary Sidebar">
-            {items.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const active = isActive(item.path);
               const Icon = item.icon;
               return (
@@ -97,7 +109,7 @@ const ClinicalShell = ({
 
         {/* Main Workspace Column */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Top Navigation Bar (Dentivo Emerald + Glass Pill Bar) */}
+          {/* Top Navigation Bar */}
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[26px] border border-border/60 bg-card/90 px-5 py-3 shadow-card backdrop-blur-md">
             <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2.5 lg:hidden">
@@ -114,7 +126,7 @@ const ClinicalShell = ({
                   MedVision
                 </span>
                 <span className="rounded-full bg-[#07221e]/10 px-2.5 py-0.5 text-[11px] font-semibold text-secondary dark:bg-[#72f6d5]/15 dark:text-[#72f6d5]">
-                  Thoracic AI Suite
+                  Thoracic Studio
                 </span>
               </div>
             </div>
@@ -124,7 +136,7 @@ const ClinicalShell = ({
               aria-label="Workspace Sections"
               className="flex items-center gap-1 overflow-x-auto rounded-full bg-muted/80 p-1 text-xs"
             >
-              {items.map((item) => {
+              {NAV_ITEMS.map((item) => {
                 const active = isActive(item.path);
                 return (
                   <Link
@@ -149,22 +161,26 @@ const ClinicalShell = ({
               })}
             </nav>
 
-            {/* Right Practitioner Profile Pill */}
+            {/* Right Clinician Profile Pill */}
             <div className="flex items-center gap-2.5">
               {headerRight}
-              <div className="flex items-center gap-3 rounded-full border border-border/70 bg-muted/40 py-1.5 pl-2 pr-4">
+              <Link
+                to="/settings"
+                title="Account Settings"
+                className="flex items-center gap-3 rounded-full border border-border/70 bg-muted/40 py-1.5 pl-2 pr-4 transition-colors hover:bg-muted/70"
+              >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#07221e] text-xs font-bold text-[#72f6d5] ring-1 ring-[#72f6d5]/40 shadow-sm">
-                  {(practitionerName || user?.email || "DR").slice(0, 2).toUpperCase()}
+                  {resolvedName.replace(/^Dr\.\s*/i, "").slice(0, 2).toUpperCase()}
                 </div>
                 <div className="hidden leading-tight sm:block">
                   <div className="text-xs font-bold text-foreground">
-                    {practitionerName || user?.email || "Clinician"}
+                    {resolvedName}
                   </div>
-                  <div className="text-[11px] text-muted-foreground capitalize">
-                    {hospitalName || userRole?.replace("_", " ") || "Practitioner"}
+                  <div className="text-[11px] text-muted-foreground">
+                    {resolvedHospital}
                   </div>
                 </div>
-              </div>
+              </Link>
               <button
                 onClick={handleSignOut}
                 title="Sign Out"

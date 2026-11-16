@@ -8,8 +8,7 @@ import {
   setActiveLocalAccount,
   upsertLocalAccount,
   addLocalAuditLog,
-  getLocalPatients,
-  addLocalPatient,
+  ensureSeedClinicalData,
 } from "@/lib/localClinicalStore";
 
 interface AuthContextType {
@@ -22,7 +21,7 @@ interface AuthContextType {
     email: string,
     password: string,
     fullName: string,
-    role: string,
+    specialty: string,
     hospital: string
   ) => Promise<{ error: Error | null; immediateLogin?: boolean }>;
   signIn: (
@@ -30,7 +29,7 @@ interface AuthContextType {
     password: string,
     requireOtp?: boolean
   ) => Promise<{ error: Error | null; requiresOtp?: boolean }>;
-  signInDemo: (role?: "practitioner" | "admin") => Promise<void>;
+  signInDemo: () => Promise<void>;
   verifyLoginOtp: (code: string) => Promise<{ error: Error | null }>;
   resendLoginOtp: () => Promise<{ error: Error | null }>;
   cancelOtpLogin: () => void;
@@ -45,8 +44,9 @@ function buildSyntheticUser(acct: LocalAccount): User {
     app_metadata: { provider: "email" },
     user_metadata: {
       full_name: acct.full_name,
-      role: acct.role,
+      role: "practitioner",
       hospital: acct.hospital,
+      specialty: acct.specialty || "Thoracic Radiology",
     },
     aud: "authenticated",
     created_at: acct.created_at,
@@ -66,26 +66,6 @@ function buildSyntheticSession(acct: LocalAccount): Session {
   } as Session;
 }
 
-function ensureSamplePatientsForUser(userId: string) {
-  const existing = getLocalPatients(userId);
-  if (existing.length === 0) {
-    addLocalPatient({
-      created_by: userId,
-      patient_name: "Kwame Mensah",
-      age: 58,
-      gender: "Male",
-      notes: "Persistent cough, 20 pack-year smoking history; referred for thoracic CT & X-ray evaluation.",
-    });
-    addLocalPatient({
-      created_by: userId,
-      patient_name: "Abena Osei",
-      age: 34,
-      gender: "Female",
-      notes: "Acute fever (38.9°C) and productive cough for 4 days; evaluate for lobar consolidation.",
-    });
-  }
-}
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -93,32 +73,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [pendingOtpEmail, setPendingOtpEmail] = useState<string | null>(null);
 
-  const fetchRole = async (userId: string, fallbackRole?: string | null) => {
-    try {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (data?.role) {
-        setUserRole(data.role);
-        return;
-      }
-    } catch {
-      // ignore RLS/network errors and fall back
-    }
-    const localAcct = getActiveLocalAccount();
-    setUserRole(fallbackRole || localAcct?.role || "practitioner");
-  };
-
   const applyLocalAccount = (acct: LocalAccount) => {
     setActiveLocalAccount(acct);
-    ensureSamplePatientsForUser(acct.id);
+    ensureSeedClinicalData(acct.id);
     const synUser = buildSyntheticUser(acct);
     const synSession = buildSyntheticSession(acct);
     setUser(synUser);
     setSession(synSession);
-    setUserRole(acct.role);
+    setUserRole("practitioner");
     setLoading(false);
   };
 
@@ -127,10 +89,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, supaSession) => {
       if (supaSession?.user) {
+        ensureSeedClinicalData(supaSession.user.id);
         setSession(supaSession);
         setUser(supaSession.user);
-        const metaRole = (supaSession.user.user_metadata?.role as string) || null;
-        setTimeout(() => fetchRole(supaSession.user.id, metaRole), 0);
+        setUserRole("practitioner");
         setLoading(false);
       } else {
         const localAcct = getActiveLocalAccount();
@@ -147,10 +109,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     supabase.auth.getSession().then(({ data: { session: supaSession } }) => {
       if (supaSession?.user) {
+        ensureSeedClinicalData(supaSession.user.id);
         setSession(supaSession);
         setUser(supaSession.user);
-        const metaRole = (supaSession.user.user_metadata?.role as string) || null;
-        fetchRole(supaSession.user.id, metaRole);
+        setUserRole("practitioner");
         setLoading(false);
       } else {
         const localAcct = getActiveLocalAccount();
@@ -169,21 +131,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     email: string,
     password: string,
     fullName: string,
-    role: string,
+    specialty: string,
     hospital: string
   ) => {
-    const normalizedRole =
-      role === "admin" || role === "practitioner" || role === "authorized_user"
-        ? role
-        : "practitioner";
-
-    // Always register in the Local Clinical Vault first so the clinician can access
-    // the workstation immediately even if Supabase email confirmation is pending or rate-limited.
     const localAcct = upsertLocalAccount({
       email,
       password,
       full_name: fullName,
-      role: normalizedRole,
+      specialty: specialty || "Thoracic Radiology",
       hospital,
     });
 
@@ -193,7 +148,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: { full_name: fullName, role: normalizedRole, hospital },
+          data: {
+            full_name: fullName,
+            role: "practitioner",
+            specialty: specialty || "Thoracic Radiology",
+            hospital,
+          },
         },
       });
 
@@ -203,15 +163,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email,
           password,
           full_name: fullName,
-          role: normalizedRole,
+          specialty: specialty || "Thoracic Radiology",
           hospital,
         });
         setActiveLocalAccount(synced);
-        ensureSamplePatientsForUser(data.user.id);
+        ensureSeedClinicalData(data.user.id);
         return { error: null, immediateLogin: true };
       }
 
-      // If signUp created the user without a session (or user already exists), try direct password sign-in
       const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -222,23 +181,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email,
           password,
           full_name: fullName,
-          role: normalizedRole,
+          specialty: specialty || "Thoracic Radiology",
           hospital,
         });
         setActiveLocalAccount(synced);
-        ensureSamplePatientsForUser(signInData.user.id);
+        ensureSeedClinicalData(signInData.user.id);
         return { error: null, immediateLogin: true };
       }
     } catch {
       // Proceed to immediate local activation
     }
 
-    // Activate immediately via Local Clinical Session so email rate-limits / unconfirmed emails never block the user
     applyLocalAccount(localAcct);
     addLocalAuditLog({
       user_id: localAcct.id,
       action: "clinician_signup",
-      details: { email: localAcct.email, role: localAcct.role, hospital: localAcct.hospital },
+      details: { email: localAcct.email, specialty: localAcct.specialty, hospital: localAcct.hospital },
     });
     return { error: null, immediateLogin: true };
   };
@@ -260,18 +218,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: normalizedEmail,
             password,
             full_name: (meta.full_name as string) || normalizedEmail.split("@")[0],
-            role:
-              meta.role === "admin" || meta.role === "practitioner" || meta.role === "authorized_user"
-                ? meta.role
-                : "practitioner",
+            specialty: (meta.specialty as string) || "Thoracic Radiology",
             hospital: (meta.hospital as string) || "Korle Bu Teaching Hospital",
           });
           setActiveLocalAccount(synced);
-          ensureSamplePatientsForUser(data.user.id);
+          ensureSeedClinicalData(data.user.id);
           return { error: null, requiresOtp: false };
         }
 
-        // Optional 2FA OTP mode if explicitly requested
         await supabase.auth.signOut();
         const { error: otpError } = await supabase.auth.signInWithOtp({
           email: normalizedEmail,
@@ -283,7 +237,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // Check local clinician vault (handles accounts created when Supabase email confirmation is pending or rate-limited)
       const knownAccounts = getLocalAccounts();
       const matched = knownAccounts.find((a) => a.email.toLowerCase() === normalizedEmail);
 
@@ -292,18 +245,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         addLocalAuditLog({
           user_id: matched.id,
           action: "clinician_signin",
-          details: { email: matched.email, mode: "local_verified" },
+          details: { email: matched.email },
         });
         return { error: null, requiresOtp: false };
       }
 
-      // Also if Supabase specifically says "Email not confirmed", activate the clinician session directly
       if (passwordError && /email not confirmed/i.test(passwordError.message)) {
         const acct = upsertLocalAccount({
           email: normalizedEmail,
           password,
           full_name: matched?.full_name || normalizedEmail.split("@")[0],
-          role: matched?.role || "practitioner",
+          specialty: matched?.specialty || "Thoracic Radiology",
           hospital: matched?.hospital || "Korle Bu Teaching Hospital",
         });
         applyLocalAccount(acct);
@@ -324,18 +276,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signInDemo = async (role: "practitioner" | "admin" = "practitioner") => {
+  const signInDemo = async () => {
     const demoAccount = upsertLocalAccount({
-      email: role === "admin" ? "admin@medvision.clinical" : "dr.mensah@medvision.clinical",
-      full_name: role === "admin" ? "Dr. Kofi Mensah (Admin)" : "Dr. Amara Mensah",
-      role,
+      email: "dr.mensah@medvision.clinical",
+      full_name: "Dr. Amara Mensah",
+      specialty: "Thoracic Radiology",
       hospital: "Korle Bu Teaching Hospital",
     });
     applyLocalAccount(demoAccount);
     addLocalAuditLog({
       user_id: demoAccount.id,
-      action: "demo_clinician_signin",
-      details: { email: demoAccount.email, role: demoAccount.role },
+      action: "clinician_signin",
+      details: { email: demoAccount.email, clinician: demoAccount.full_name },
     });
   };
 

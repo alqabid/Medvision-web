@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Search, Download, FileImage, AlertTriangle, CheckCircle2, Database, Filter,
+  Search, Download, FileImage, AlertTriangle, CheckCircle2, Database, Filter, FileText,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,13 @@ import ClinicalShell from "@/components/ClinicalShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCSV } from "@/lib/csv";
+import { generateReport } from "@/lib/report";
 import { toast } from "sonner";
 import {
   getLocalAnalyses,
   getLocalPatients,
   addLocalAuditLog,
+  getActiveLocalAccount,
 } from "@/lib/localClinicalStore";
 
 // Result colours: "Normal" green, "Invalid" amber, every other class red
@@ -47,10 +49,11 @@ interface PatientRow {
   patient_name: string;
   gender: string | null;
   age: number | null;
+  notes?: string | null;
 }
 
 const Records = () => {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const [rows, setRows] = useState<AnalysisRow[]>([]);
   const [patients, setPatients] = useState<Record<string, PatientRow>>({});
   const [search, setSearch] = useState("");
@@ -63,13 +66,13 @@ const Records = () => {
   const fetchAll = async () => {
     if (!user) return;
     setLoading(true);
-    const localRows = userRole === "admin" ? getLocalAnalyses() : getLocalAnalyses(user.id);
-    const localPats = getLocalPatients();
+    const localRows = getLocalAnalyses(user.id);
+    const localPats = getLocalPatients(user.id);
     try {
       const { data } = await supabase
         .from("analyses").select("*")
         .order("created_at", { ascending: false });
-      const { data: pats } = await supabase.from("patients").select("id, patient_name, gender, age");
+      const { data: pats } = await supabase.from("patients").select("id, patient_name, gender, age, notes");
       const remoteRows = (data as AnalysisRow[]) || [];
       const seen = new Set(remoteRows.map((r) => r.id));
       const mergedRows = [...remoteRows, ...localRows.filter((r) => !seen.has(r.id))].sort(
@@ -119,18 +122,56 @@ const Records = () => {
       filename: r.original_filename,
       prediction: r.prediction,
       confidence: Number(r.confidence).toFixed(2),
-      model: r.model_used,
-      findings: r.findings ?? "",
     }));
     downloadCSV(`medvision-records-${Date.now()}.csv`, exportRows);
     if (user) {
+      addLocalAuditLog({
+        user_id: user.id,
+        action: "export_records_csv",
+        details: { count: exportRows.length, filter, modalityFilter },
+      });
       await supabase.from("audit_logs").insert({
         user_id: user.id,
         action: "export_records_csv",
         details: { count: exportRows.length, filter, modalityFilter },
       });
     }
-    toast.success(`Exported ${exportRows.length} records`);
+    toast.success(`Exported ${exportRows.length} records to CSV`);
+  };
+
+  const handleDownloadRowPDF = (r: AnalysisRow) => {
+    const localAcct = getActiveLocalAccount();
+    const pat = r.patient_id ? patients[r.patient_id] : null;
+    let parsedProbs: Record<string, number> | undefined;
+    let parsedNotes = r.findings || "";
+    if (r.findings) {
+      try {
+        const parsed = JSON.parse(r.findings);
+        if (parsed?.class_probabilities) parsedProbs = parsed.class_probabilities;
+        if (parsed?.notes) parsedNotes = parsed.notes;
+      } catch {
+        // ignore
+      }
+    }
+
+    generateReport({
+      modality: r.modality === "ct" ? "ct" : "xray",
+      prediction: r.prediction,
+      confidence: Number(r.confidence),
+      findings: parsedNotes || `Predicted ${r.prediction} (${Number(r.confidence).toFixed(1)}% confidence).`,
+      timestamp: new Date(r.created_at).toLocaleString(),
+      filename: r.original_filename,
+      classProbabilities: parsedProbs,
+      patientName: pat?.patient_name,
+      patientAge: pat?.age ?? undefined,
+      patientGender: pat?.gender ?? undefined,
+      patientNotes: pat?.notes ?? undefined,
+      practitioner:
+        (user?.user_metadata?.full_name as string) || localAcct?.full_name || user?.email || "Clinician",
+      hospital: (user?.user_metadata?.hospital as string) || localAcct?.hospital || "Korle Bu Teaching Hospital",
+      modelUsed: r.modality === "ct" ? "Chest CT Oncology Classifier" : "Chest X-Ray Pneumonia Classifier",
+    });
+    toast.success("Clinical PDF report downloaded");
   };
 
   const avgConf = useMemo(
@@ -152,14 +193,14 @@ const Records = () => {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
-            <Database className="h-8 w-8 text-secondary" />Records Management
+            <Database className="h-8 w-8 text-secondary" />Diagnostic Records
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Centralized, encrypted diagnostic records across Chest X-ray and Chest CT{userRole === "admin" ? " (admin view: all users)" : ""}.
+            Filter, review, and export diagnostic studies across Chest X-ray and Chest CT.
           </p>
         </div>
         <Button variant="outline" asChild className="rounded-full">
-          <Link to="/audit">Audit Trail</Link>
+          <Link to="/audit">Activity Log</Link>
         </Button>
       </motion.div>
 
@@ -167,7 +208,7 @@ const Records = () => {
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="clinical-surface p-5">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Total Records</span>
+            <span className="text-sm text-muted-foreground">Total Studies</span>
             <FileImage className="h-5 w-5 text-secondary" />
           </div>
           <p className="mt-2 font-display text-3xl font-bold text-foreground">{modalityFilteredRows.length}</p>
@@ -175,11 +216,11 @@ const Records = () => {
         </div>
         <div className="clinical-surface p-5">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Avg Confidence</span>
+            <span className="text-sm text-muted-foreground">Mean Confidence</span>
             <Filter className="h-5 w-5 text-info" />
           </div>
           <p className="mt-2 font-display text-3xl font-bold text-foreground">{avgConf}%</p>
-          <p className="mt-1 text-xs text-muted-foreground">Mean model probability</p>
+          <p className="mt-1 text-xs text-muted-foreground">Across selected scan types</p>
         </div>
         {classCounts.slice(0, 6).map(c => {
           const st = styleFor(c.name);
@@ -194,7 +235,7 @@ const Records = () => {
               </div>
               <p className="mt-2 font-display text-3xl font-bold text-foreground">{c.value}</p>
               <p className="text-xs text-muted-foreground">
-                {modalityFilteredRows.length ? ((c.value / modalityFilteredRows.length) * 100).toFixed(1) : "0"}% of cohort
+                {modalityFilteredRows.length ? ((c.value / modalityFilteredRows.length) * 100).toFixed(1) : "0"}% of studies
               </p>
             </div>
           );
@@ -205,7 +246,7 @@ const Records = () => {
       <div className="mb-5 flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search by patient, filename, or result…" value={search} onChange={e => setSearch(e.target.value)} className="rounded-full pl-10" />
+          <Input placeholder="Search by patient, filename, or finding..." value={search} onChange={e => setSearch(e.target.value)} className="rounded-full pl-10" />
         </div>
         <Select value={modalityFilter} onValueChange={setModalityFilter}>
           <SelectTrigger className="w-48 rounded-full"><SelectValue placeholder="All Scan Types" /></SelectTrigger>
@@ -218,7 +259,7 @@ const Records = () => {
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-52 rounded-full"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Classes ({modalityFilteredRows.length})</SelectItem>
+            <SelectItem value="all">All Findings ({modalityFilteredRows.length})</SelectItem>
             {classCounts.map(c => (
               <SelectItem key={c.name} value={c.name}>{c.name} ({c.value})</SelectItem>
             ))}
@@ -228,7 +269,7 @@ const Records = () => {
 
       <div className="clinical-surface p-6 overflow-x-auto">
         {loading ? (
-          <p className="py-12 text-center text-muted-foreground">Loading records…</p>
+          <p className="py-12 text-center text-muted-foreground">Loading records...</p>
         ) : filtered.length === 0 ? (
           <p className="py-12 text-center text-muted-foreground">No records match your filters.</p>
         ) : (
@@ -238,10 +279,10 @@ const Records = () => {
                 <th className="pb-3 font-medium text-muted-foreground">Date</th>
                 <th className="pb-3 font-medium text-muted-foreground">Patient</th>
                 <th className="pb-3 font-medium text-muted-foreground">Scan Type</th>
-                <th className="pb-3 font-medium text-muted-foreground">File</th>
-                <th className="pb-3 font-medium text-muted-foreground">Result</th>
+                <th className="pb-3 font-medium text-muted-foreground">Study File</th>
+                <th className="pb-3 font-medium text-muted-foreground">Finding</th>
                 <th className="pb-3 font-medium text-muted-foreground">Confidence</th>
-                <th className="pb-3 font-medium text-muted-foreground">Model</th>
+                <th className="pb-3 text-right font-medium text-muted-foreground">Report</th>
               </tr>
             </thead>
             <tbody>
@@ -249,29 +290,48 @@ const Records = () => {
                 const st = styleFor(r.prediction);
                 const Icon = st.icon;
                 const isCt = r.modality === "ct";
+                const patName = r.patient_id ? patients[r.patient_id]?.patient_name : null;
                 return (
-                <tr key={r.id} className="border-b border-border/50 last:border-0">
-                  <td className="py-3.5 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
-                  <td className="py-3.5 font-medium text-foreground">{r.patient_id ? patients[r.patient_id]?.patient_name ?? "Unassigned" : "Unassigned"}</td>
-                  <td className="py-3.5">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        isCt ? "bg-[#07221e] text-[#72f6d5]" : "bg-secondary/15 text-secondary"
-                      }`}
-                    >
-                      {formatModalityLabel(r.modality)}
-                    </span>
-                  </td>
-                  <td className="py-3.5 text-muted-foreground max-w-[200px] truncate">{r.original_filename}</td>
-                  <td className="py-3.5">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.badge}`}>
-                      <Icon className="h-3 w-3" />
-                      {r.prediction}
-                    </span>
-                  </td>
-                  <td className="py-3.5 font-mono text-foreground">{Number(r.confidence).toFixed(1)}%</td>
-                  <td className="py-3.5 text-muted-foreground">{r.model_used}</td>
-                </tr>
+                  <tr key={r.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-3.5 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="py-3.5 font-medium text-foreground">
+                      {r.patient_id && patName ? (
+                        <Link to={`/patients/${r.patient_id}`} className="font-semibold text-secondary hover:underline">
+                          {patName}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">Unassigned</span>
+                      )}
+                    </td>
+                    <td className="py-3.5">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          isCt ? "bg-[#07221e] text-[#72f6d5]" : "bg-secondary/15 text-secondary"
+                        }`}
+                      >
+                        {formatModalityLabel(r.modality)}
+                      </span>
+                    </td>
+                    <td className="py-3.5 text-muted-foreground max-w-[200px] truncate">{r.original_filename}</td>
+                    <td className="py-3.5">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.badge}`}>
+                        <Icon className="h-3 w-3" />
+                        {r.prediction}
+                      </span>
+                    </td>
+                    <td className="py-3.5 font-mono text-foreground">{Number(r.confidence).toFixed(1)}%</td>
+                    <td className="py-3.5 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadRowPDF(r)}
+                        className="h-8 rounded-full text-xs"
+                      >
+                        <FileText className="mr-1.5 h-3.5 w-3.5 text-secondary" />
+                        PDF
+                      </Button>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>

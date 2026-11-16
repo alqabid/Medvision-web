@@ -51,15 +51,11 @@ const Login = () => {
     }
   };
 
-  const handleDemoLogin = async (role: "practitioner" | "admin" = "practitioner") => {
+  const handleDemoLogin = async () => {
     setIsLoading(true);
-    await signInDemo(role);
+    await signInDemo();
     setIsLoading(false);
-    toast.success(
-      role === "admin"
-        ? "Signed in as Admin Clinician"
-        : "Signed in as Dr. Amara Mensah"
-    );
+    toast.success("Signed in as Dr. Amara Mensah");
     goToDashboard();
   };
 
@@ -275,28 +271,16 @@ const Login = () => {
                   <p className="mb-3 text-center text-xs font-medium text-muted-foreground">
                     Or launch an instant clinical session
                   </p>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isLoading}
-                      onClick={() => handleDemoLogin("practitioner")}
-                      className="h-10 rounded-full border-secondary/30 bg-secondary/5 text-xs font-semibold text-foreground hover:bg-secondary/15"
-                    >
-                      <Stethoscope className="mr-1.5 h-3.5 w-3.5 text-secondary" />
-                      Demo Practitioner
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isLoading}
-                      onClick={() => handleDemoLogin("admin")}
-                      className="h-10 rounded-full border-border text-xs font-semibold text-foreground hover:bg-muted"
-                    >
-                      <Shield className="mr-1.5 h-3.5 w-3.5 text-secondary" />
-                      Demo Admin
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isLoading}
+                    onClick={handleDemoLogin}
+                    className="h-10 w-full rounded-full border-secondary/30 bg-secondary/5 text-xs font-semibold text-foreground hover:bg-secondary/15"
+                  >
+                    <Stethoscope className="mr-1.5 h-3.5 w-3.5 text-secondary" />
+                    Instant Demo Clinician (Dr. Amara Mensah)
+                  </Button>
                 </div>
 
                 <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -353,7 +337,7 @@ const Login = () => {
         </motion.div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Protected by Row-Level Security &amp; client-side EXIF anonymization.
+          Dedicated thoracic imaging workstation for clinical decision support.
         </p>
       </div>
     </div>

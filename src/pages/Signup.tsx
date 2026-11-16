@@ -24,12 +24,19 @@ const HOSPITALS = [
   "Other",
 ];
 
+const SPECIALTIES = [
+  "Thoracic Radiology",
+  "Pulmonology & Critical Care",
+  "Thoracic Oncology",
+  "Internal Medicine",
+];
+
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<string>("practitioner");
+  const [specialty, setSpecialty] = useState<string>("Thoracic Radiology");
   const [hospital, setHospital] = useState<string>("Korle Bu Teaching Hospital");
   const [otherHospital, setOtherHospital] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +47,7 @@ const Signup = () => {
     e.preventDefault();
     const finalHospital = hospital === "Other" ? otherHospital.trim() : hospital;
 
-    if (!fullName.trim() || !email.trim() || !password || !role || !hospital) {
+    if (!fullName.trim() || !email.trim() || !password || !hospital) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -58,7 +65,7 @@ const Signup = () => {
       email.trim(),
       password,
       fullName.trim(),
-      role,
+      specialty,
       finalHospital
     );
     setIsLoading(false);
@@ -66,7 +73,7 @@ const Signup = () => {
     if (error) {
       toast.error(error.message);
     } else if (immediateLogin) {
-      toast.success(`Account activated! Welcome, ${fullName.trim()}.`);
+      toast.success(`Welcome to MedVision, ${fullName.trim()}`);
       navigate("/dashboard");
     } else {
       toast.success("Account created! Signing in to workstation...");
@@ -76,7 +83,7 @@ const Signup = () => {
 
   const handleQuickDemo = async () => {
     setIsLoading(true);
-    await signInDemo("practitioner");
+    await signInDemo();
     setIsLoading(false);
     toast.success("Signed in as Dr. Amara Mensah");
     navigate("/dashboard");
@@ -91,7 +98,7 @@ const Signup = () => {
           <div className="absolute h-[420px] w-[420px] rounded-full border border-dashed border-[#72f6d5]/15" />
           <img
             src={lungsHero}
-            alt="3D Translucent Bioluminescent Lungs"
+            alt="Translucent Bioluminescent Lungs"
             className="h-full w-full object-cover object-center opacity-90 mix-blend-screen animate-lung-breathe"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#07221e]/80 via-transparent to-[#07221e]/90" />
@@ -115,18 +122,18 @@ const Signup = () => {
           {[
             {
               icon: Activity,
-              title: "Chest X-Ray Pneumonia Engine",
-              sub: "Bacterial · Viral · Normal classification",
+              title: "Chest Radiography Care",
+              sub: "Bacterial · Viral · Clear lung fields",
             },
             {
               icon: Layers,
-              title: "Chest CT Lung-Cancer Engine",
+              title: "Chest CT Oncology Care",
               sub: "Adenocarcinoma · Large Cell · Squamous Cell",
             },
             {
               icon: CheckCircle2,
-              title: "Instant Workstation Activation",
-              sub: "Immediate access to Grad-CAM & PDF reports",
+              title: "Instant Workstation Access",
+              sub: "Immediate visual attention maps & PDF reports",
             },
           ].map((item, idx) => (
             <motion.div
@@ -148,10 +155,10 @@ const Signup = () => {
 
         <div className="relative z-10 max-w-md space-y-2">
           <h2 className="font-display text-3xl font-bold leading-tight text-white">
-            Join the <span className="text-[#72f6d5]">Thoracic AI</span> Clinical Network
+            Join the <span className="text-[#72f6d5]">Thoracic Care</span> Clinical Network
           </h2>
           <p className="text-sm leading-relaxed text-white/75">
-            Register your practitioner profile to analyze radiographs and CT slices with full patient history tracking.
+            Register your clinician profile to review chest radiographs and CT studies with longitudinal patient records.
           </p>
         </div>
       </div>
@@ -183,13 +190,13 @@ const Signup = () => {
             <div className="mb-5">
               <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-secondary">
                 <span className="h-2 w-2 rounded-full bg-secondary" />
-                New Clinician Profile
+                Clinician Registration
               </span>
               <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-foreground">
                 Create account
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Instant activation for Chest X-ray &amp; Chest CT diagnostics.
+                Instant access to Chest X-ray &amp; Chest CT review.
               </p>
             </div>
 
@@ -200,7 +207,7 @@ const Signup = () => {
                   <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="name"
-                    placeholder="Dr. Jane Smith"
+                    placeholder="Dr. Amara Mensah"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="h-11 rounded-2xl pl-10"
@@ -225,25 +232,21 @@ const Signup = () => {
                 </div>
               </div>
 
-              {/* Interactive Role Selector Pills */}
               <div className="space-y-1.5">
-                <Label>Clinical Role</Label>
-                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/70 p-1 text-xs">
-                  {[
-                    { id: "practitioner", label: "Medical Practitioner" },
-                    { id: "authorized_user", label: "Authorized User" },
-                  ].map((r) => (
+                <Label>Clinical Specialty</Label>
+                <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/70 p-1.5 text-xs">
+                  {SPECIALTIES.map((spec) => (
                     <button
-                      key={r.id}
+                      key={spec}
                       type="button"
-                      onClick={() => setRole(r.id)}
-                      className={`rounded-xl py-2.5 font-semibold transition-all ${
-                        role === r.id
+                      onClick={() => setSpecialty(spec)}
+                      className={`rounded-xl px-2.5 py-2 font-semibold transition-all ${
+                        specialty === spec
                           ? "bg-[#07221e] text-[#72f6d5] shadow-sm"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      {r.label}
+                      {spec}
                     </button>
                   ))}
                 </div>
@@ -320,7 +323,7 @@ const Signup = () => {
                 className="h-10 w-full rounded-full border-secondary/30 bg-secondary/5 text-xs font-semibold text-foreground hover:bg-secondary/15"
               >
                 <Stethoscope className="mr-1.5 h-3.5 w-3.5 text-secondary" />
-                Instant Demo Clinician Access (1-Click)
+                Instant Demo Clinician (Dr. Amara Mensah)
               </Button>
             </div>
 
@@ -334,7 +337,7 @@ const Signup = () => {
         </motion.div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Protected by Row-Level Security &amp; client-side EXIF anonymization.
+          Dedicated thoracic imaging workstation for clinical decision support.
         </p>
       </div>
     </div>

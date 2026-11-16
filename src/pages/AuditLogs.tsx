@@ -18,8 +18,42 @@ interface AuditRow {
   created_at: string;
 }
 
+const formatActionLabel = (action: string) => {
+  switch (action) {
+    case "analyze_scan":
+      return "Scan Analyzed";
+    case "create_patient":
+      return "Patient Registered";
+    case "download_report_pdf":
+      return "PDF Report Exported";
+    case "export_records_csv":
+      return "Records CSV Exported";
+    case "clinician_signin":
+    case "demo_clinician_signin":
+      return "Clinician Sign-In";
+    case "clinician_signup":
+      return "Clinician Onboarded";
+    default:
+      return action.replace(/_/g, " ");
+  }
+};
+
+const formatDetailsSummary = (details: any) => {
+  if (!details || typeof details !== "object") return "Standard clinical event";
+  const parts: string[] = [];
+  if (details.modality) parts.push(details.modality === "ct" ? "Chest CT" : "Chest X-ray");
+  if (details.prediction) parts.push(`Finding: ${details.prediction}`);
+  if (details.confidence !== undefined) parts.push(`${details.confidence}% confidence`);
+  if (details.name) parts.push(`Patient: ${details.name}`);
+  if (details.filename) parts.push(`File: ${details.filename}`);
+  if (details.count !== undefined) parts.push(`${details.count} records`);
+  if (details.hospital) parts.push(String(details.hospital));
+  if (details.email && parts.length === 0) parts.push(String(details.email));
+  return parts.length > 0 ? parts.join(" · ") : "Completed";
+};
+
 const AuditLogs = () => {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -28,7 +62,7 @@ const AuditLogs = () => {
 
   const fetchLogs = async () => {
     setLoading(true);
-    const localLogs = userRole === "admin" ? getLocalAuditLogs() : getLocalAuditLogs(user?.id);
+    const localLogs = getLocalAuditLogs(user?.id);
     try {
       const { data } = await supabase
         .from("audit_logs").select("*")
@@ -50,19 +84,18 @@ const AuditLogs = () => {
     if (!search) return rows;
     const q = search.toLowerCase();
     return rows.filter(r =>
-      r.action.toLowerCase().includes(q) ||
-      JSON.stringify(r.details ?? {}).toLowerCase().includes(q)
+      formatActionLabel(r.action).toLowerCase().includes(q) ||
+      formatDetailsSummary(r.details).toLowerCase().includes(q)
     );
   }, [rows, search]);
 
   const handleExport = () => {
-    downloadCSV(`medvision-audit-${Date.now()}.csv`, filtered.map(r => ({
+    downloadCSV(`medvision-activity-${Date.now()}.csv`, filtered.map(r => ({
       timestamp: new Date(r.created_at).toISOString(),
-      user_id: r.user_id ?? "",
-      action: r.action,
-      details: JSON.stringify(r.details ?? {}),
+      event: formatActionLabel(r.action),
+      summary: formatDetailsSummary(r.details),
     })));
-    toast.success("Audit log exported");
+    toast.success("Activity log exported");
   };
 
   return (
@@ -75,32 +108,30 @@ const AuditLogs = () => {
     >
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7">
         <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
-          <ScrollText className="h-8 w-8 text-secondary" />Audit Trail
+          <ScrollText className="h-8 w-8 text-secondary" />Clinical Activity Log
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Immutable activity log for compliance &amp; security review.
-          {userRole === "admin" ? " Showing all events." : " Showing your activity."}
+          Chronological record of diagnostic reviews, patient registrations, and report exports.
         </p>
       </motion.div>
 
       <div className="mb-5 relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search action or details…" value={search} onChange={e => setSearch(e.target.value)} className="rounded-full pl-10" />
+        <Input placeholder="Search activity events..." value={search} onChange={e => setSearch(e.target.value)} className="rounded-full pl-10" />
       </div>
 
       <div className="clinical-surface p-6 overflow-x-auto">
         {loading ? (
-          <p className="py-12 text-center text-muted-foreground">Loading audit log…</p>
+          <p className="py-12 text-center text-muted-foreground">Loading activity log...</p>
         ) : filtered.length === 0 ? (
-          <p className="py-12 text-center text-muted-foreground">No audit events found.</p>
+          <p className="py-12 text-center text-muted-foreground">No clinical activity recorded yet.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="pb-3 font-medium text-muted-foreground">Timestamp</th>
-                <th className="pb-3 font-medium text-muted-foreground">Action</th>
-                <th className="pb-3 font-medium text-muted-foreground">User</th>
-                <th className="pb-3 font-medium text-muted-foreground">Details</th>
+                <th className="pb-3 font-medium text-muted-foreground">Date &amp; Time</th>
+                <th className="pb-3 font-medium text-muted-foreground">Event</th>
+                <th className="pb-3 font-medium text-muted-foreground">Clinical Summary</th>
               </tr>
             </thead>
             <tbody>
@@ -108,13 +139,12 @@ const AuditLogs = () => {
                 <tr key={r.id} className="border-b border-border/50 last:border-0">
                   <td className="py-3.5 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                   <td className="py-3.5">
-                    <span className="inline-flex items-center rounded-full bg-[#07221e] px-2.5 py-0.5 text-xs font-semibold text-[#72f6d5]">
-                      {r.action}
+                    <span className="inline-flex items-center rounded-full bg-[#07221e] px-3 py-0.5 text-xs font-semibold text-[#72f6d5]">
+                      {formatActionLabel(r.action)}
                     </span>
                   </td>
-                  <td className="py-3.5 text-muted-foreground font-mono text-xs">{r.user_id?.slice(0, 8) ?? "system"}</td>
-                  <td className="py-3.5 text-muted-foreground font-mono text-xs max-w-md truncate">
-                    {r.details ? JSON.stringify(r.details) : "None"}
+                  <td className="py-3.5 text-muted-foreground">
+                    {formatDetailsSummary(r.details)}
                   </td>
                 </tr>
               ))}

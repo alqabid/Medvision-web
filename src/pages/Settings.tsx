@@ -15,9 +15,11 @@ import {
 } from "@/lib/localClinicalStore";
 
 const Settings = () => {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [hospital, setHospital] = useState("");
+  const [specialty, setSpecialty] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
@@ -27,28 +29,45 @@ const Settings = () => {
     const localAcct = getActiveLocalAccount();
     setFullName((user.user_metadata?.full_name as string) || localAcct?.full_name || "");
     setEmail(user.email || localAcct?.email || "");
-    supabase.from("profiles").select("full_name, email").eq("user_id", user.id).maybeSingle().then(({ data }) => {
-      if (data && (data.full_name || data.email)) {
-        setFullName(data.full_name || "");
-        setEmail(data.email || user.email || "");
-      }
-    });
+    setHospital(
+      (user.user_metadata?.hospital as string) || localAcct?.hospital || "Korle Bu Teaching Hospital"
+    );
+    setSpecialty(
+      (user.user_metadata?.specialty as string) || localAcct?.specialty || "Thoracic Radiology"
+    );
+    supabase
+      .from("profiles")
+      .select("full_name, email, hospital")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          if (data.full_name) setFullName(data.full_name);
+          if (data.email) setEmail(data.email);
+          if (data.hospital) setHospital(data.hospital);
+        }
+      });
   }, [user]);
 
   const saveProfile = async () => {
     if (!user) return;
     setSaving(true);
     const localAcct = getActiveLocalAccount();
-    if (localAcct) {
-      const updated = upsertLocalAccount({
-        ...localAcct,
-        full_name: fullName,
-      });
-      setActiveLocalAccount(updated);
-    }
-    await supabase.from("profiles").update({ full_name: fullName }).eq("user_id", user.id);
+    const updated = upsertLocalAccount({
+      id: localAcct?.id || user.id,
+      email: email || user.email || "clinician@medvision.clinical",
+      password: localAcct?.password,
+      full_name: fullName,
+      hospital,
+      specialty,
+    });
+    setActiveLocalAccount(updated);
+    await supabase
+      .from("profiles")
+      .update({ full_name: fullName, hospital })
+      .eq("user_id", user.id);
     setSaving(false);
-    toast.success("Profile updated");
+    toast.success("Clinician profile updated");
   };
 
   const changePassword = async () => {
@@ -69,11 +88,15 @@ const Settings = () => {
   };
 
   return (
-    <ClinicalShell practitionerName={fullName}>
+    <ClinicalShell practitionerName={fullName} hospitalName={hospital}>
       <div className="mx-auto max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="mb-1 font-display text-3xl font-extrabold text-foreground sm:text-4xl">Account Settings</h1>
-          <p className="mb-7 text-sm text-muted-foreground">Manage your clinician profile and security credentials.</p>
+          <h1 className="mb-1 font-display text-3xl font-extrabold text-foreground sm:text-4xl">
+            Clinician Settings
+          </h1>
+          <p className="mb-7 text-sm text-muted-foreground">
+            Manage your clinician profile, hospital affiliation, and workstation credentials.
+          </p>
         </motion.div>
 
         <div className="space-y-6">
@@ -86,24 +109,41 @@ const Settings = () => {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Full Name</Label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                <Label>Full Name &amp; Title</Label>
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Dr. Amara Mensah"
+                />
               </div>
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>Clinical Email</Label>
                 <Input value={email} disabled />
               </div>
               <div className="space-y-2">
-                <Label>Role</Label>
-                <Input value={userRole?.replace("_", " ") || "user"} disabled className="capitalize" />
+                <Label>Hospital / Institution</Label>
+                <Input
+                  value={hospital}
+                  onChange={(e) => setHospital(e.target.value)}
+                  placeholder="Korle Bu Teaching Hospital"
+                />
               </div>
               <div className="space-y-2">
-                <Label>User ID</Label>
-                <Input value={user?.id || ""} disabled className="font-mono text-xs" />
+                <Label>Clinical Specialty</Label>
+                <Input
+                  value={specialty}
+                  onChange={(e) => setSpecialty(e.target.value)}
+                  placeholder="Thoracic Radiology"
+                />
               </div>
             </div>
-            <Button onClick={saveProfile} disabled={saving} className="mt-6 rounded-full bg-[#07221e] px-6 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]">
-              <Save className="mr-2 h-4 w-4" />{saving ? "Saving..." : "Save Profile"}
+            <Button
+              onClick={saveProfile}
+              disabled={saving}
+              className="mt-6 rounded-full bg-[#07221e] px-6 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {saving ? "Saving..." : "Save Profile"}
             </Button>
           </div>
 
@@ -116,10 +156,20 @@ const Settings = () => {
             </div>
             <div className="space-y-2">
               <Label>New Password</Label>
-              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="At least 8 characters" />
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 6 characters"
+              />
             </div>
-            <Button onClick={changePassword} disabled={pwSaving || !newPassword} className="mt-6 rounded-full bg-[#07221e] px-6 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]">
-              <Lock className="mr-2 h-4 w-4" />{pwSaving ? "Updating..." : "Update Password"}
+            <Button
+              onClick={changePassword}
+              disabled={pwSaving || !newPassword}
+              className="mt-6 rounded-full bg-[#07221e] px-6 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]"
+            >
+              <Lock className="mr-2 h-4 w-4" />
+              {pwSaving ? "Updating..." : "Update Password"}
             </Button>
           </div>
         </div>
