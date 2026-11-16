@@ -9,33 +9,37 @@ const ORBITAL_NODES = [
   {
     id: "xray",
     icon: Activity,
-    title: "Chest X-Ray",
-    subtitle: "3-Class Pneumonia",
-    detail: "Differentiates Bacterial & Viral Pneumonia from Normal radiographs.",
+    title: "Chest Radiography",
+    subtitle: "Pneumonia Care",
+    detail: "Distinguishes bacterial and viral pulmonary infections from clear chest radiographs in seconds.",
+    tags: ["Bacterial Pneumonia", "Viral Pneumonia", "Clear Lung Fields"],
     position: "lg:left-[4%] lg:top-[52%]",
   },
   {
     id: "ct",
     icon: Layers,
-    title: "Chest CT",
-    subtitle: "4-Class Oncology",
-    detail: "Classifies Adenocarcinoma, Large Cell & Squamous Cell vs Normal CT.",
-    position: "lg:left-[23%] lg:top-[48%]",
+    title: "Chest CT Studio",
+    subtitle: "Oncology Care",
+    detail: "Evaluates cross-sectional thoracic slices to surface pulmonary nodule and tissue patterns alongside healthy lung parenchyma.",
+    tags: ["Adenocarcinoma", "Large Cell", "Squamous Cell", "Healthy Parenchyma"],
+    position: "lg:left-[23%] lg:top-[47%]",
   },
   {
     id: "gradcam",
     icon: Eye,
-    title: "Grad-CAM",
-    subtitle: "Visual Localization",
-    detail: "Highlights lobar consolidations on X-ray & parenchymal nodules on CT.",
-    position: "lg:right-[23%] lg:top-[48%]",
+    title: "Visual Attention",
+    subtitle: "Guided Clarity",
+    detail: "Illuminates the exact anatomical regions driving each assessment so clinicians can review with confidence.",
+    tags: ["Lobar Opacities", "Parenchymal Nodules", "Airway Symmetry"],
+    position: "lg:right-[23%] lg:top-[47%]",
   },
   {
     id: "privacy",
     icon: ShieldCheck,
-    title: "Zero-EXIF",
+    title: "Patient Privacy",
     subtitle: "Protected Records",
-    detail: "Strips camera metadata client-side with RLS-secured patient history.",
+    detail: "Automatically scrubs embedded device identifiers before upload and isolates patient records by care team.",
+    tags: ["Automatic De-Identification", "Clinician Access Control", "Clinical Reports"],
     position: "lg:right-[4%] lg:top-[52%]",
   },
 ];
@@ -52,7 +56,7 @@ const HeroSection = () => {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <img
             src={lungsHero}
-            alt="3D Translucent Thoracic Lungs"
+            alt="Translucent Thoracic Lungs"
             className="h-full w-full object-cover object-center opacity-90 animate-lung-breathe"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#07221e]/80 via-transparent to-[#07221e]/90" />
@@ -128,7 +132,7 @@ const HeroSection = () => {
                     opacity: { duration: 0.55, delay: 0.15 + idx * 0.1 },
                     y: { duration: 4.5 + idx * 0.6, repeat: Infinity, ease: "easeInOut" },
                   }}
-                  className={`glass-pill group flex items-center gap-3.5 rounded-full px-5 py-3.5 text-left transition-all lg:absolute lg:w-[225px] ${
+                  className={`glass-pill group flex items-center gap-3.5 rounded-full px-5 py-3.5 text-left transition-all lg:absolute lg:w-[235px] ${
                     node.position
                   } ${
                     isSelected
@@ -154,7 +158,7 @@ const HeroSection = () => {
             })}
           </div>
 
-          {/* Bottom Split Row: Narrative & Mint CTA (Left) + Live Interactive Node Readout (Right) */}
+          {/* Bottom Split Row: Narrative & Mint CTA (Left) + Calm Clinical Focus Card (Right) */}
           <div className="flex flex-col items-start justify-between gap-8 pt-6 lg:flex-row lg:items-end">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -163,21 +167,22 @@ const HeroSection = () => {
               className="max-w-sm space-y-5"
             >
               <p className="text-base leading-relaxed text-white/85 sm:text-lg">
-                Dual-modality deep learning for <span className="font-semibold text-white">Chest X-ray pneumonia</span> and{" "}
-                <span className="font-semibold text-[#72f6d5]">Chest CT lung-cancer</span> classification, engineered for clinical clarity.
+                Thoughtful diagnostic support for{" "}
+                <span className="font-semibold text-white">chest radiography</span> and{" "}
+                <span className="font-semibold text-[#72f6d5]">thoracic CT</span>, designed for calmer, faster clinical decisions.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   to={user ? "/dashboard" : "/signup"}
                   className="inline-flex items-center gap-3 rounded-full bg-[#72f6d5] px-7 py-3.5 text-sm font-bold text-[#06221e] shadow-[0_0_28px_rgba(114,246,213,0.45)] transition-all hover:scale-[1.02] hover:bg-[#89f9dd]"
                 >
-                  {user ? "Launch Workstation" : "Analyze Your First Scan"}
+                  {user ? "Launch Workstation" : "Begin Clinical Review"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </motion.div>
 
-            {/* Bottom-Right Floating Glass Readout Card */}
+            {/* Bottom-Right Floating Glass Focus Card */}
             <motion.div
               key={currentNode.id}
               initial={{ opacity: 0, y: 12 }}
@@ -188,25 +193,17 @@ const HeroSection = () => {
               <div className="mb-2 flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#72f6d5]">
                   <span className="h-2 w-2 rounded-full bg-[#72f6d5]" />
-                  {currentNode.title} · {currentNode.subtitle}
+                  {currentNode.title}
                 </span>
-                <span className="font-mono text-[11px] text-white/60">MobileNetV2 · 224×224</span>
+                <span className="text-[11px] font-medium text-white/65">{currentNode.subtitle}</span>
               </div>
-              <p className="text-xs leading-relaxed text-white/80">{currentNode.detail}</p>
+              <p className="text-xs leading-relaxed text-white/85">{currentNode.detail}</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {currentNode.id === "xray" ? (
-                  ["Bacterial Pneumonia", "Viral Pneumonia", "Normal"].map((c) => (
-                    <span key={c} className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/90">
-                      {c}
-                    </span>
-                  ))
-                ) : (
-                  ["Adenocarcinoma", "Large Cell Carcinoma", "Squamous Cell Carcinoma", "Normal"].map((c) => (
-                    <span key={c} className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/90">
-                      {c}
-                    </span>
-                  ))
-                )}
+                {currentNode.tags.map((c) => (
+                  <span key={c} className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-white/90">
+                    {c}
+                  </span>
+                ))}
               </div>
             </motion.div>
           </div>

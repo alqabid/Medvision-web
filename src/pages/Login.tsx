@@ -160,7 +160,7 @@ const Login = () => {
             Precision Thoracic <span className="text-[#72f6d5]">Clarity</span> in Every Scan
           </h2>
           <p className="text-sm leading-relaxed text-white/75">
-            Access dual-modality MobileNetV2 inference, interactive Grad-CAM heatmaps, and encrypted longitudinal patient cohorts.
+            Guided visual attention maps, chest radiography and CT oncology review, and longitudinal patient records in one calm workspace.
           </p>
         </div>
       </div>

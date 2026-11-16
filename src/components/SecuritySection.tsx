@@ -1,75 +1,83 @@
 import { motion } from "framer-motion";
-import { Shield, Lock, Eye, Key, Server, FileX } from "lucide-react";
+import { Shield, Lock, Eye, Key, CheckCircle2 } from "lucide-react";
 
-const securityFeatures = [
-  {
-    icon: Key,
-    title: "Two-Factor Email Verification",
-    description: "Every sign-in requires your password plus a one-time verification code emailed directly to the clinician.",
-  },
+const pillars = [
   {
     icon: Shield,
-    title: "Role-Based Access Control",
-    description: "Admin, Practitioner, and Authorized User roles with granular permissions and policy enforcement.",
+    title: "Care-Team Access Controls",
+    description: "Dedicated permissions for practitioners and clinical administrators keep patient studies restricted to authorized care teams.",
   },
   {
     icon: Lock,
-    title: "Encrypted Clinical Storage",
-    description: "Chest X-rays and CT scans are stored in private buckets with encryption at rest by default.",
-  },
-  {
-    icon: Server,
-    title: "TLS Transport Security",
-    description: "All inference requests and patient record queries are protected in transit via HTTPS/TLS.",
-  },
-  {
-    icon: FileX,
-    title: "Browser-Side EXIF Stripping",
-    description: "Automatic removal of camera and device metadata before any image leaves the browser.",
+    title: "Automatic Privacy Scrubbing",
+    description: "Embedded device and camera identifiers are automatically stripped in the browser before any scan is stored.",
   },
   {
     icon: Eye,
-    title: "Row-Level Security (RLS)",
-    description: "PostgreSQL row-level security policies ensure practitioners only access authorized patient records.",
+    title: "Transparent Clinical Audit",
+    description: "Every diagnostic review and report export is logged to support clinical governance and quality assurance.",
+  },
+  {
+    icon: Key,
+    title: "Optional Two-Step Verification",
+    description: "Clinicians can enable one-time email verification codes alongside password sign-in for sensitive workstations.",
   },
 ];
 
 const SecuritySection = () => {
   return (
-    <section id="security" className="bg-background px-3 py-12 sm:px-6">
-      <div className="mx-auto max-w-[1440px] rounded-[36px] bg-[#07221e] px-6 py-20 text-white shadow-elevated sm:px-12">
+    <section id="security" className="bg-background px-3 py-10 sm:px-6">
+      <div className="mx-auto max-w-[1440px] rounded-[36px] bg-[#07221e] px-6 py-16 text-white shadow-elevated sm:px-12 lg:py-20">
         <div className="mx-auto max-w-6xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-14 text-center"
-          >
-            <h2 className="mb-3 font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">
-              Clinical-Grade <span className="text-[#72f6d5]">Data Governance</span>
-            </h2>
-            <p className="mx-auto max-w-lg text-sm text-white/70 sm:text-base">
-              Built from the ground up with defense-in-depth controls for sensitive thoracic imaging data.
-            </p>
-          </motion.div>
+          <div className="grid items-center gap-10 lg:grid-cols-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="space-y-5 lg:col-span-5"
+            >
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#72f6d5]/30 bg-[#72f6d5]/10 px-4 py-1.5 text-xs font-semibold text-[#72f6d5]">
+                <span className="h-2 w-2 rounded-full bg-[#72f6d5]" />
+                Clinical Trust &amp; Privacy
+              </span>
+              <h2 className="font-display text-3xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+                Built Around <span className="text-[#72f6d5]">Patient Trust</span>
+              </h2>
+              <p className="text-sm leading-relaxed text-white/75 sm:text-base">
+                Sensitive thoracic studies deserve quiet, dependable protection. MedVision safeguards patient identity from the moment a scan is selected.
+              </p>
+              <div className="space-y-2.5 pt-2">
+                {[
+                  "Private encrypted clinical storage",
+                  "Isolated patient records per practitioner",
+                  "Human-in-the-loop radiologist correlation",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2.5 text-xs font-medium text-white/85">
+                    <CheckCircle2 className="h-4 w-4 text-[#72f6d5]" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
 
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {securityFeatures.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="glass-pill rounded-[26px] p-6 transition-transform hover:-translate-y-0.5"
-              >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#72f6d5] text-[#06221e]">
-                  <feature.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 font-display text-lg font-bold text-white">{feature.title}</h3>
-                <p className="text-sm leading-relaxed text-white/70">{feature.description}</p>
-              </motion.div>
-            ))}
+            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
+              {pillars.map((pillar, i) => (
+                <motion.div
+                  key={pillar.title}
+                  initial={{ opacity: 0, y: 18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.07 }}
+                  className="glass-pill rounded-[28px] p-6 transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#72f6d5] text-[#06221e]">
+                    <pillar.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mb-2 font-display text-lg font-bold text-white">{pillar.title}</h3>
+                  <p className="text-xs leading-relaxed text-white/75 sm:text-sm">{pillar.description}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
