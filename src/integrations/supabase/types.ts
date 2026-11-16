@@ -64,6 +64,7 @@ export type Database = {
           gradcam_path: string | null
           id: string
           image_path: string
+          modality: string
           model_used: string
           original_filename: string
           patient_id: string | null
@@ -77,6 +78,7 @@ export type Database = {
           gradcam_path?: string | null
           id?: string
           image_path: string
+          modality?: string
           model_used?: string
           original_filename?: string
           patient_id?: string | null
@@ -90,6 +92,7 @@ export type Database = {
           gradcam_path?: string | null
           id?: string
           image_path?: string
+          modality?: string
           model_used?: string
           original_filename?: string
           patient_id?: string | null

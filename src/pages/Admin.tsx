@@ -347,9 +347,13 @@ const Admin = () => {
                           <td className="py-3 text-foreground">{a.original_filename}</td>
                           <td className="py-3">
                             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                              a.prediction === "Pneumonia" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"
+                              a.prediction === "Normal"
+                                ? "bg-success/10 text-success"
+                                : a.prediction === "Invalid"
+                                ? "bg-warning/10 text-warning"
+                                : "bg-destructive/10 text-destructive"
                             }`}>
-                              {a.prediction === "Pneumonia" ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                              {a.prediction === "Normal" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
                               {a.prediction}
                             </span>
                           </td>

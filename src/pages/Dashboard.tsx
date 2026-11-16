@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X, History, Settings, User, Users, BarChart3, Download, Database, ScrollText, Share2, MessageCircle, Mail, Link2, UserPlus } from "lucide-react";
+import { Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X, History, Settings, User, Users, BarChart3, Download, Database, ScrollText, Share2, MessageCircle, Mail, Link2, UserPlus, Info } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,10 +12,11 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { generateReport } from "@/lib/report";
+import { generateReport, type ScanModality } from "@/lib/report";
 import { stripImageMetadata } from "@/lib/stripImageMetadata";
 
 interface AnalysisResult {
+  modality: ScanModality;
   prediction: string;
   confidence: number;
   findings: string;
@@ -27,6 +28,7 @@ interface AnalysisResult {
 
 interface AnalysisRecord {
   id: string;
+  modality?: string;
   prediction: string;
   confidence: number;
   original_filename: string;
@@ -57,9 +59,12 @@ const getResultStyle = (prediction: string) => {
   return { icon: AlertTriangle, iconClass: "text-destructive", boxClass: "border-destructive/20 bg-destructive/10" };
 };
 
+const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest CT" : "Chest X-ray");
+
 const Dashboard = () => {
   const { user, userRole, signOut } = useAuth();
   const navigate = useNavigate();
+  const [modality, setModality] = useState<ScanModality>("xray");
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -74,6 +79,9 @@ const Dashboard = () => {
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
   const [newPatient, setNewPatient] = useState<PatientDraft>(emptyPatient);
   const [activePatient, setActivePatient] = useState<PatientRow | null>(null);
+
+  const scanLabel = formatModalityLabel(modality);
+  const scanShortLabel = modality === "ct" ? "CT scan" : "X-ray";
 
   useEffect(() => {
     fetchHistory();
@@ -97,6 +105,12 @@ const Dashboard = () => {
     if (!user) return;
     const { data } = await supabase.from("patients").select("id, patient_name, age, gender, notes").order("created_at", { ascending: false });
     if (data) setPatients(data as PatientRow[]);
+  };
+
+  const handleModalityChange = (next: ScanModality) => {
+    if (isAnalyzing || next === modality) return;
+    setModality(next);
+    setResult(null);
   };
 
   const handleFile = useCallback((file: File) => {
@@ -162,18 +176,37 @@ const Dashboard = () => {
       const apiUrl = import.meta.env.VITE_MEDVISION_API_URL || "http://localhost:8000";
       const formData = new FormData();
       formData.append("file", cleanFile);
+      formData.append("modality", modality);
       const response = await fetch(`${apiUrl}/predict`, { method: "POST", body: formData });
-      if (!response.ok) throw new Error("Model analysis failed. Is the backend server running?");
+      if (!response.ok) {
+        let detailMessage = "";
+        try {
+          const errPayload = await response.json();
+          if (errPayload && typeof errPayload.detail === "string") {
+            detailMessage = errPayload.detail;
+          }
+        } catch {
+          // ignore JSON parse failure
+        }
+        throw new Error(detailMessage || "Model analysis failed. Is the backend server running?");
+      }
 
       const modelResult = await response.json();
-      const findings = `Model classified this scan as ${modelResult.prediction} with ${modelResult.confidence}% confidence for patient ${patient.patient_name}.`;
-      const modelUsed = modelResult.model_used || "MobileNetV2 (3-class, fine-tuned)";
+      const resolvedModality: ScanModality = modelResult.modality === "ct" ? "ct" : modality;
+      const resolvedScanLabel = formatModalityLabel(resolvedModality);
+      const findings = `Model classified this ${resolvedScanLabel.toLowerCase()} as ${modelResult.prediction} with ${modelResult.confidence}% confidence for patient ${patient.patient_name}.`;
+      const modelUsed =
+        modelResult.model_used ||
+        (resolvedModality === "ct"
+          ? "MobileNetV2 (4-class CT: Adenocarcinoma/Large Cell/Normal/Squamous Cell, fine-tuned)"
+          : "MobileNetV2 (3-class: Bacterial/Normal/Viral, fine-tuned)");
 
       const { error: insertError } = await supabase.from("analyses").insert({
         user_id: user.id,
         patient_id: patient.id,
         image_path: filePath,
         original_filename: selectedFile.name,
+        modality: resolvedModality,
         prediction: modelResult.prediction,
         confidence: modelResult.confidence,
         findings,
@@ -182,6 +215,7 @@ const Dashboard = () => {
       if (insertError) console.error("DB insert error:", insertError);
 
       setResult({
+        modality: resolvedModality,
         prediction: modelResult.prediction,
         confidence: modelResult.confidence,
         findings,
@@ -206,11 +240,13 @@ const Dashboard = () => {
 
   const buildShareText = () => {
     if (!result || !activePatient) return "";
+    const resultScanLabel = formatModalityLabel(result.modality);
     const probs = result.classProbabilities
       ? "\n" + Object.entries(result.classProbabilities).map(([k, v]) => `• ${k}: ${Number(v).toFixed(1)}%`).join("\n")
       : "";
-    return `🩺 *MedVision Diagnostic Report*
+    return `🩺 *MedVision Diagnostic Report (${resultScanLabel})*
 Patient: ${activePatient.patient_name}${activePatient.age ? ` (${activePatient.age}${activePatient.gender ? ", " + activePatient.gender : ""})` : ""}
+Scan Type: ${resultScanLabel}
 Practitioner: ${profile?.full_name || user?.email || "—"}
 Date: ${result.timestamp}
 
@@ -229,15 +265,17 @@ Model: ${result.modelUsed}
   };
 
   const shareEmail = () => {
-    const subject = encodeURIComponent(`MedVision Report — ${activePatient?.patient_name || "Patient"}`);
+    const resultScanLabel = formatModalityLabel(result?.modality ?? modality);
+    const subject = encodeURIComponent(`MedVision ${resultScanLabel} Report — ${activePatient?.patient_name || "Patient"}`);
     const body = encodeURIComponent(buildShareText());
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   const shareNative = async () => {
     const text = buildShareText();
+    const resultScanLabel = formatModalityLabel(result?.modality ?? modality);
     if (navigator.share) {
-      try { await navigator.share({ title: "MedVision Report", text }); } catch { /* cancelled */ }
+      try { await navigator.share({ title: `MedVision ${resultScanLabel} Report`, text }); } catch { /* cancelled */ }
     } else {
       await navigator.clipboard.writeText(text);
       toast.success("Report copied to clipboard");
@@ -287,21 +325,26 @@ Model: ${result.modelUsed}
 
       <main className="mx-auto max-w-7xl px-6 py-10">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="mb-2 font-display text-3xl font-bold text-foreground">X-Ray Analysis</h1>
-          <p className="mb-8 text-muted-foreground">Register the patient, upload their chest X-ray, and get a 3-class AI diagnosis with Grad-CAM explainability.</p>
+          <h1 className="mb-2 font-display text-3xl font-bold text-foreground">Scan Analysis</h1>
+          <p className="mb-8 text-muted-foreground">
+            {modality === "ct"
+              ? "Register the patient, upload their chest CT scan, and get a 4-class lung-cancer subtype AI classification with Grad-CAM explainability."
+              : "Register the patient, upload their chest X-ray, and get a 3-class pneumonia AI diagnosis with Grad-CAM explainability."}
+          </p>
         </motion.div>
 
         {showHistory ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
             <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Case History</h2>
             {history.length === 0 ? (
-              <p className="py-12 text-center text-muted-foreground">No analyses yet. Upload an X-ray to get started.</p>
+              <p className="py-12 text-center text-muted-foreground">No analyses yet. Upload a chest X-ray or CT scan to get started.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left">
                       <th className="pb-3 font-medium text-muted-foreground">Date</th>
+                      <th className="pb-3 font-medium text-muted-foreground">Scan Type</th>
                       <th className="pb-3 font-medium text-muted-foreground">File</th>
                       <th className="pb-3 font-medium text-muted-foreground">Result</th>
                       <th className="pb-3 font-medium text-muted-foreground">Confidence</th>
@@ -312,9 +355,19 @@ Model: ${result.modelUsed}
                     {history.map((record) => {
                       const s = getResultStyle(record.prediction);
                       const Icon = s.icon;
+                      const isCt = record.modality === "ct";
                       return (
                         <tr key={record.id} className="border-b border-border/50 last:border-0">
                           <td className="py-3 text-foreground">{new Date(record.created_at).toLocaleDateString()}</td>
+                          <td className="py-3">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                              }`}
+                            >
+                              {formatModalityLabel(record.modality)}
+                            </span>
+                          </td>
                           <td className="py-3 text-foreground">{record.original_filename}</td>
                           <td className="py-3">
                             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${s.boxClass} ${s.iconClass}`}>
@@ -401,7 +454,41 @@ Model: ${result.modelUsed}
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
-                <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Upload X-Ray</h2>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="font-display text-lg font-semibold text-card-foreground">Upload Scan</h2>
+                  <div role="group" aria-label="Scan type selector" className="inline-flex rounded-lg bg-muted p-1 text-xs">
+                    <button
+                      type="button"
+                      disabled={isAnalyzing}
+                      onClick={() => handleModalityChange("xray")}
+                      className={`rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        modality === "xray" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Chest X-ray
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isAnalyzing}
+                      onClick={() => handleModalityChange("ct")}
+                      className={`rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        modality === "ct" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Chest CT
+                    </button>
+                  </div>
+                </div>
+
+                {modality === "ct" && (
+                  <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-foreground">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                    <p>
+                      The CT model classifies lung-cancer subtypes (Adenocarcinoma, Large Cell, Squamous Cell) vs Normal. It does not detect pneumonia on CT.
+                    </p>
+                  </div>
+                )}
+
                 {!preview ? (
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -410,7 +497,7 @@ Model: ${result.modelUsed}
                     className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center transition-colors ${dragOver ? "border-secondary bg-secondary/5" : "border-border"}`}
                   >
                     <Upload className={`mb-4 h-10 w-10 ${dragOver ? "text-secondary" : "text-muted-foreground"}`} />
-                    <p className="mb-2 text-sm font-medium text-foreground">Drag & drop your X-ray image</p>
+                    <p className="mb-2 text-sm font-medium text-foreground">Drag & drop your {scanLabel.toLowerCase()} image</p>
                     <p className="mb-4 text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
                     <label>
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
@@ -423,14 +510,14 @@ Model: ${result.modelUsed}
                       <X className="h-4 w-4" />
                     </button>
                     <div className="overflow-hidden rounded-lg border border-border">
-                      <img src={preview} alt="Uploaded X-ray" className="h-64 w-full object-contain bg-foreground/5" />
+                      <img src={preview} alt={`Uploaded ${scanLabel}`} className="h-64 w-full object-contain bg-foreground/5" />
                     </div>
                     <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                       <FileImage className="h-4 w-4" />
                       <span className="truncate">{selectedFile?.name}</span>
                     </div>
                     <Button onClick={handleAnalyze} disabled={isAnalyzing} className="mt-4 w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                      {isAnalyzing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</>) : "Analyze X-Ray"}
+                      {isAnalyzing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</>) : `Analyze ${scanLabel}`}
                     </Button>
                   </div>
                 )}
@@ -439,13 +526,26 @@ Model: ${result.modelUsed}
 
             {/* Right column: results */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
-              <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Analysis Results</h2>
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <h2 className="font-display text-lg font-semibold text-card-foreground">Analysis Results</h2>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    (result?.modality ?? modality) === "ct"
+                      ? "bg-info/10 text-info"
+                      : "bg-secondary/10 text-secondary"
+                  }`}
+                >
+                  {formatModalityLabel(result?.modality ?? modality)}
+                </span>
+              </div>
               <AnimatePresence mode="wait">
                 {isAnalyzing ? (
                   <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center py-16">
                     <Loader2 className="mb-4 h-12 w-12 animate-spin text-secondary" />
-                    <p className="mb-2 font-medium text-foreground">Processing X-Ray</p>
-                    <p className="mb-4 text-sm text-muted-foreground">Running 3-class inference & Grad-CAM…</p>
+                    <p className="mb-2 font-medium text-foreground">Processing {scanLabel}</p>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      Running {modality === "ct" ? "4-class CT" : "3-class X-ray"} inference & Grad-CAM…
+                    </p>
                     <Progress value={66} className="w-48" />
                   </motion.div>
                 ) : result ? (
@@ -485,7 +585,9 @@ Model: ${result.modelUsed}
 
                     {result.prediction !== "Invalid" && result.classProbabilities && (
                       <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-                        <p className="mb-2 text-sm font-medium text-foreground">Class Breakdown (3-class)</p>
+                        <p className="mb-2 text-sm font-medium text-foreground">
+                          Class Breakdown ({Object.keys(result.classProbabilities).length}-class)
+                        </p>
                         {Object.entries(result.classProbabilities).map(([className, prob]) => (
                           <div key={className} className="space-y-1">
                             <div className="flex items-center justify-between text-xs">
@@ -504,7 +606,7 @@ Model: ${result.modelUsed}
                         <p className="mb-2 text-xs text-muted-foreground">Highlighted regions show what most influenced the model's prediction.</p>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <img src={preview ?? ""} alt="Original X-ray" className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
+                            <img src={preview ?? ""} alt={`Original ${formatModalityLabel(result.modality)}`} className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
                             <p className="mt-1 text-center text-xs text-muted-foreground">Original</p>
                           </div>
                           <div>
@@ -517,7 +619,7 @@ Model: ${result.modelUsed}
                         <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
                           <p className="font-medium text-foreground">How to read this heatmap</p>
                           <p className="text-muted-foreground">
-                            This overlay implies that the highlighted areas of the lung are the regions the AI focused on when arriving at a <span className="font-semibold text-foreground">{result.prediction}</span> diagnosis — in other words, <span className="italic">these portions are the affected / most influential parts</span> of the X-ray.
+                            This overlay implies that the highlighted areas of the lung are the regions the AI focused on when arriving at a <span className="font-semibold text-foreground">{result.prediction}</span> diagnosis — in other words, <span className="italic">these portions are the affected / most influential parts</span> of the {result.modality === "ct" ? "CT scan" : "X-ray"}.
                           </p>
                           <div className="flex flex-wrap items-center gap-3 pt-1">
                             <span className="flex items-center gap-1.5">
@@ -538,6 +640,8 @@ Model: ${result.modelUsed}
                           </div>
                           {result.prediction === "Normal" ? (
                             <p className="text-muted-foreground">Because the diagnosis is <span className="font-semibold text-foreground">Normal</span>, the highlighted regions represent healthy lung fields the model verified rather than signs of disease.</p>
+                          ) : result.modality === "ct" ? (
+                            <p className="text-muted-foreground">The hotter regions likely correspond to nodules, masses, or other tissue patterns consistent with <span className="font-semibold text-foreground">{result.prediction}</span>. Correlate with clinical findings and refer for radiologist review.</p>
                           ) : (
                             <p className="text-muted-foreground">The hotter regions likely correspond to opacities, consolidations, or other patterns consistent with <span className="font-semibold text-foreground">{result.prediction}</span>. Always correlate with clinical findings.</p>
                           )}
@@ -546,6 +650,7 @@ Model: ${result.modelUsed}
                     )}
 
                     <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Scan Type</span><span className="text-foreground">{formatModalityLabel(result.modality)}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="text-foreground">{result.modelUsed}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Timestamp</span><span className="text-foreground">{result.timestamp}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Image</span><span className="truncate text-foreground">{selectedFile?.name}</span></div>
@@ -556,11 +661,12 @@ Model: ${result.modelUsed}
                         variant="outline"
                         className="w-full"
                         onClick={() => result && generateReport({
+                          modality: result.modality,
                           prediction: result.prediction,
                           confidence: result.confidence,
                           findings: result.findings,
                           timestamp: result.timestamp,
-                          filename: selectedFile?.name || "xray.jpg",
+                          filename: selectedFile?.name || (result.modality === "ct" ? "chest-ct.jpg" : "chest-xray.jpg"),
                           imageDataUrl: preview,
                           heatmapDataUrl: result.heatmapDataUrl,
                           classProbabilities: result.classProbabilities,
@@ -596,7 +702,9 @@ Model: ${result.modelUsed}
                 ) : (
                   <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16 text-center">
                     <FileImage className="mb-4 h-12 w-12 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Enter patient details, upload an X-ray, and analyze to see the full report here.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Enter patient details, upload a {scanShortLabel}, and analyze to see the full report here.
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>

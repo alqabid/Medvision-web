@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Shield, LogOut, ArrowLeft, Search, Download, FileImage,
-  AlertTriangle, CheckCircle2, Database, Filter, Activity,
+  AlertTriangle, CheckCircle2, Database, Filter,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,19 +15,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadCSV } from "@/lib/csv";
 import { toast } from "sonner";
 
-// Consistent per-class styling — supports any number of classes the model emits.
-const CLASS_STYLES: Record<string, { badge: string; icon: typeof CheckCircle2 }> = {
-  Normal: { badge: "bg-success/10 text-success", icon: CheckCircle2 },
-  Pneumonia: { badge: "bg-destructive/10 text-destructive", icon: AlertTriangle },
-  "COVID-19": { badge: "bg-purple-500/10 text-purple-500", icon: Activity },
-  Covid: { badge: "bg-purple-500/10 text-purple-500", icon: Activity },
-  Tuberculosis: { badge: "bg-orange-500/10 text-orange-500", icon: Activity },
-  Invalid: { badge: "bg-muted text-muted-foreground", icon: AlertTriangle },
+// Result colours: "Normal" green, "Invalid" amber, every other class red
+const styleFor = (p: string) => {
+  if (p === "Normal") return { badge: "bg-success/10 text-success", icon: CheckCircle2 };
+  if (p === "Invalid") return { badge: "bg-warning/10 text-warning", icon: AlertTriangle };
+  return { badge: "bg-destructive/10 text-destructive", icon: AlertTriangle };
 };
-const styleFor = (p: string) => CLASS_STYLES[p] ?? { badge: "bg-info/10 text-info", icon: Activity };
+
+const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest CT" : "Chest X-ray");
 
 interface AnalysisRow {
   id: string;
+  modality?: string;
   prediction: string;
   confidence: number;
   original_filename: string;
@@ -52,6 +51,7 @@ const Records = () => {
   const [patients, setPatients] = useState<Record<string, PatientRow>>({});
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
+  const [modalityFilter, setModalityFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchAll(); }, [user]);
@@ -68,14 +68,19 @@ const Records = () => {
     setLoading(false);
   };
 
+  const modalityFilteredRows = useMemo(() => {
+    if (modalityFilter === "all") return rows;
+    return rows.filter(r => (r.modality ?? "xray") === modalityFilter);
+  }, [rows, modalityFilter]);
+
   const classCounts = useMemo(() => {
     const map = new Map<string, number>();
-    rows.forEach(r => map.set(r.prediction, (map.get(r.prediction) ?? 0) + 1));
+    modalityFilteredRows.forEach(r => map.set(r.prediction, (map.get(r.prediction) ?? 0) + 1));
     return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [rows]);
+  }, [modalityFilteredRows]);
 
   const filtered = useMemo(() => {
-    return rows.filter(r => {
+    return modalityFilteredRows.filter(r => {
       if (filter !== "all" && r.prediction !== filter) return false;
       if (!search) return true;
       const q = search.toLowerCase();
@@ -84,12 +89,13 @@ const Records = () => {
         || r.prediction.toLowerCase().includes(q)
         || (p && p.toLowerCase().includes(q));
     });
-  }, [rows, search, filter, patients]);
+  }, [modalityFilteredRows, search, filter, patients]);
 
   const handleExport = async () => {
     const exportRows = filtered.map(r => ({
       date: new Date(r.created_at).toISOString(),
       patient: r.patient_id ? patients[r.patient_id]?.patient_name ?? "—" : "—",
+      modality: formatModalityLabel(r.modality),
       filename: r.original_filename,
       prediction: r.prediction,
       confidence: Number(r.confidence).toFixed(2),
@@ -101,7 +107,7 @@ const Records = () => {
       await supabase.from("audit_logs").insert({
         user_id: user.id,
         action: "export_records_csv",
-        details: { count: exportRows.length, filter },
+        details: { count: exportRows.length, filter, modalityFilter },
       });
     }
     toast.success(`Exported ${exportRows.length} records`);
@@ -110,9 +116,12 @@ const Records = () => {
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
   const avgConf = useMemo(
-    () => rows.length ? (rows.reduce((s, r) => s + Number(r.confidence), 0) / rows.length).toFixed(1) : "0",
-    [rows]
+    () => modalityFilteredRows.length ? (modalityFilteredRows.reduce((s, r) => s + Number(r.confidence), 0) / modalityFilteredRows.length).toFixed(1) : "0",
+    [modalityFilteredRows]
   );
+
+  const xrayCount = useMemo(() => rows.filter(r => (r.modality ?? "xray") === "xray").length, [rows]);
+  const ctCount = useMemo(() => rows.filter(r => r.modality === "ct").length, [rows]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -156,7 +165,7 @@ const Records = () => {
               <span className="text-sm text-muted-foreground">Total Records</span>
               <FileImage className="h-5 w-5 text-secondary" />
             </div>
-            <p className="mt-2 font-display text-3xl font-bold text-foreground">{rows.length}</p>
+            <p className="mt-2 font-display text-3xl font-bold text-foreground">{modalityFilteredRows.length}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-5 shadow-card">
             <div className="flex items-center justify-between">
@@ -178,7 +187,7 @@ const Records = () => {
                 </div>
                 <p className="mt-2 font-display text-3xl font-bold text-foreground">{c.value}</p>
                 <p className="text-xs text-muted-foreground">
-                  {rows.length ? ((c.value / rows.length) * 100).toFixed(1) : "0"}% of total
+                  {modalityFilteredRows.length ? ((c.value / modalityFilteredRows.length) * 100).toFixed(1) : "0"}% of total
                 </p>
               </div>
             );
@@ -190,10 +199,18 @@ const Records = () => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search by patient, filename, or result…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
+          <Select value={modalityFilter} onValueChange={setModalityFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="All Scan Types" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Scan Types ({rows.length})</SelectItem>
+              <SelectItem value="xray">Chest X-ray ({xrayCount})</SelectItem>
+              <SelectItem value="ct">Chest CT ({ctCount})</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Classes ({rows.length})</SelectItem>
+              <SelectItem value="all">All Classes ({modalityFilteredRows.length})</SelectItem>
               {classCounts.map(c => (
                 <SelectItem key={c.name} value={c.name}>{c.name} ({c.value})</SelectItem>
               ))}
@@ -213,6 +230,7 @@ const Records = () => {
                 <tr className="border-b border-border text-left">
                   <th className="pb-3 font-medium text-muted-foreground">Date</th>
                   <th className="pb-3 font-medium text-muted-foreground">Patient</th>
+                  <th className="pb-3 font-medium text-muted-foreground">Scan Type</th>
                   <th className="pb-3 font-medium text-muted-foreground">File</th>
                   <th className="pb-3 font-medium text-muted-foreground">Result</th>
                   <th className="pb-3 font-medium text-muted-foreground">Confidence</th>
@@ -223,10 +241,20 @@ const Records = () => {
                 {filtered.map(r => {
                   const st = styleFor(r.prediction);
                   const Icon = st.icon;
+                  const isCt = r.modality === "ct";
                   return (
                   <tr key={r.id} className="border-b border-border/50 last:border-0">
                     <td className="py-3 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="py-3 text-foreground">{r.patient_id ? patients[r.patient_id]?.patient_name ?? "—" : "—"}</td>
+                    <td className="py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                        }`}
+                      >
+                        {formatModalityLabel(r.modality)}
+                      </span>
+                    </td>
                     <td className="py-3 text-muted-foreground max-w-[200px] truncate">{r.original_filename}</td>
                     <td className="py-3">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${st.badge}`}>

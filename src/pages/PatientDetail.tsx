@@ -18,6 +18,7 @@ interface Patient {
 
 interface AnalysisRecord {
   id: string;
+  modality?: string;
   prediction: string;
   confidence: number;
   original_filename: string;
@@ -31,6 +32,8 @@ const resultBadgeClass = (prediction: string) => {
   if (prediction === "Invalid") return "bg-warning/10 text-warning";
   return "bg-destructive/10 text-destructive";
 };
+
+const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest CT" : "Chest X-ray");
 
 const PatientDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -118,24 +121,34 @@ const PatientDetail = () => {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {analyses.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between rounded-lg border border-border/50 p-4">
-                      <div className="flex items-center gap-3">
-                        <FileImage className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${resultBadgeClass(a.prediction)}`}>
-                              {a.prediction === "Normal" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-                              {a.prediction}
-                            </span>
-                            <span className="text-sm text-foreground">{a.confidence}% confidence</span>
+                  {analyses.map((a) => {
+                    const isCt = a.modality === "ct";
+                    return (
+                      <div key={a.id} className="flex items-center justify-between rounded-lg border border-border/50 p-4">
+                        <div className="flex items-center gap-3">
+                          <FileImage className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                                }`}
+                              >
+                                {formatModalityLabel(a.modality)}
+                              </span>
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${resultBadgeClass(a.prediction)}`}>
+                                {a.prediction === "Normal" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                                {a.prediction}
+                              </span>
+                              <span className="text-sm text-foreground">{a.confidence}% confidence</span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{a.original_filename} · {new Date(a.created_at).toLocaleString()}</p>
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground">{a.original_filename} · {new Date(a.created_at).toLocaleString()}</p>
                         </div>
+                        <span className="text-xs text-muted-foreground">{a.model_used}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{a.model_used}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </motion.div>

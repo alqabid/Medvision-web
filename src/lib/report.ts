@@ -1,6 +1,9 @@
 import { jsPDF } from "jspdf";
 
+export type ScanModality = "xray" | "ct";
+
 interface ReportData {
+  modality?: ScanModality;
   prediction: string;
   confidence: number;
   findings: string;
@@ -22,6 +25,8 @@ export const generateReport = (data: ReportData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const modality: ScanModality = data.modality === "ct" ? "ct" : "xray";
+  const scanLabel = modality === "ct" ? "Chest CT" : "Chest X-ray";
 
   // Header
   doc.setFillColor(15, 65, 81);
@@ -32,7 +37,7 @@ export const generateReport = (data: ReportData) => {
   doc.text("MedVision", 14, 18);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("AI-Powered Chest X-Ray Diagnostic Report", 14, 25);
+  doc.text(`AI-Powered ${scanLabel} Diagnostic Report`, 14, 25);
   doc.setFontSize(9);
   doc.text(`Report ID: MV-${Date.now()}`, pageWidth - 14, 18, { align: "right" });
   doc.text(data.timestamp, pageWidth - 14, 25, { align: "right" });
@@ -42,7 +47,7 @@ export const generateReport = (data: ReportData) => {
 
   // Patient section
   doc.setFillColor(240, 244, 248);
-  doc.roundedRect(14, y - 6, pageWidth - 28, 42, 2, 2, "F");
+  doc.roundedRect(14, y - 6, pageWidth - 28, 48, 2, 2, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text("Patient Information", 18, y);
@@ -51,6 +56,7 @@ export const generateReport = (data: ReportData) => {
   const patientRows: Array<[string, string]> = [
     ["Patient Name", data.patientName || "Not specified"],
     ["Age / Gender", `${data.patientAge ?? "—"}  /  ${data.patientGender || "—"}`],
+    ["Scan Type", modality === "ct" ? "Chest CT (Lung-Cancer Subtype Classification)" : "Chest X-ray (Pneumonia Classification)"],
     ["Attending Practitioner", data.practitioner || "Not specified"],
     ["Hospital", data.hospital || "Not specified"],
     ["Clinical Notes", data.patientNotes || "None"],
@@ -81,6 +87,8 @@ export const generateReport = (data: ReportData) => {
   doc.text(`Diagnosis: ${p}`, 20, y + 12);
   doc.setFontSize(12);
   doc.text(`Confidence: ${Number(data.confidence).toFixed(2)}%`, 20, y + 22);
+  doc.setFontSize(10);
+  doc.text(`Modality: ${scanLabel}`, pageWidth - 20, y + 12, { align: "right" });
   y += 36;
 
   doc.setTextColor(20, 20, 20);
@@ -131,7 +139,7 @@ export const generateReport = (data: ReportData) => {
         doc.addImage(data.imageDataUrl, "JPEG", 14, y, imgW, imgH);
         doc.setFontSize(9);
         doc.setFont("helvetica", "italic");
-        doc.text("Original X-Ray", 14, y + imgH + 5);
+        doc.text(`Original ${scanLabel}`, 14, y + imgH + 5);
       }
       if (data.heatmapDataUrl) {
         const x2 = data.imageDataUrl ? 14 + imgW + 8 : 14;
@@ -154,7 +162,13 @@ export const generateReport = (data: ReportData) => {
   y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`Model: ${data.modelUsed || "MobileNetV2 (3-class, fine-tuned)"}`, 14, y); y += 5;
+  doc.text(`Scan Type: ${scanLabel}`, 14, y); y += 5;
+  doc.text(
+    `Model: ${data.modelUsed || (modality === "ct" ? "MobileNetV2 (4-class CT, fine-tuned)" : "MobileNetV2 (3-class, fine-tuned)")}`,
+    14,
+    y
+  );
+  y += 5;
   doc.text(`Source File: ${data.filename}`, 14, y); y += 5;
   doc.text(`Generated: ${data.timestamp}`, 14, y); y += 5;
 
@@ -171,5 +185,5 @@ export const generateReport = (data: ReportData) => {
     doc.text(`MedVision © ${new Date().getFullYear()}  ·  Page ${i}/${pageCount}`, pageWidth - 14, footY, { align: "right" });
   }
 
-  doc.save(`medvision-report-${(data.patientName || "patient").replace(/\s+/g, "_")}-${Date.now()}.pdf`);
+  doc.save(`medvision-${modality}-report-${(data.patientName || "patient").replace(/\s+/g, "_")}-${Date.now()}.pdf`);
 };

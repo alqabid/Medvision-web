@@ -14,14 +14,19 @@ interface AnalysisRecord {
   created_at: string;
 }
 
-// Deterministic color per class label — falls back to a rotating palette for unknown classes.
+// Deterministic color per class label — supports both X-ray and CT classes and falls back to a rotating palette.
 const KNOWN_COLORS: Record<string, string> = {
   Normal: "hsl(152 60% 42%)",
+  Bacterial: "hsl(0 72% 55%)",
+  Viral: "hsl(35 90% 55%)",
+  Adenocarcinoma: "hsl(350 75% 55%)",
+  "Large Cell Carcinoma": "hsl(280 65% 55%)",
+  "Squamous Cell Carcinoma": "hsl(18 85% 55%)",
   Pneumonia: "hsl(0 72% 55%)",
   "COVID-19": "hsl(280 65% 55%)",
   Covid: "hsl(280 65% 55%)",
   Tuberculosis: "hsl(35 90% 55%)",
-  Invalid: "hsl(220 10% 55%)",
+  Invalid: "hsl(45 90% 48%)",
 };
 const PALETTE = ["hsl(210 80% 55%)", "hsl(340 70% 55%)", "hsl(45 85% 55%)", "hsl(170 60% 45%)", "hsl(260 60% 60%)"];
 const colorFor = (label: string, idx: number) => KNOWN_COLORS[label] ?? PALETTE[idx % PALETTE.length];
