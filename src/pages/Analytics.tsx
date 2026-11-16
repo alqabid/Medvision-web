@@ -14,13 +14,13 @@ interface AnalysisRecord {
   created_at: string;
 }
 
-// Deterministic color per class label — supports both X-ray and CT classes and falls back to a rotating palette.
+// Deterministic color per class label: supports both X-ray and CT classes and falls back to a rotating palette.
 const KNOWN_COLORS: Record<string, string> = {
-  Normal: "hsl(156 64% 38%)",
+  Normal: "hsl(161 78% 36%)",
   Bacterial: "hsl(0 74% 54%)",
   Viral: "hsl(38 92% 48%)",
   Adenocarcinoma: "hsl(348 78% 54%)",
-  "Large Cell Carcinoma": "hsl(262 72% 56%)",
+  "Large Cell Carcinoma": "hsl(172 68% 34%)",
   "Squamous Cell Carcinoma": "hsl(18 85% 54%)",
   Pneumonia: "hsl(0 74% 54%)",
   "COVID-19": "hsl(280 65% 55%)",
@@ -28,7 +28,7 @@ const KNOWN_COLORS: Record<string, string> = {
   Tuberculosis: "hsl(35 90% 55%)",
   Invalid: "hsl(45 90% 48%)",
 };
-const PALETTE = ["hsl(221 83% 53%)", "hsl(340 70% 55%)", "hsl(45 85% 55%)", "hsl(170 60% 45%)", "hsl(260 60% 60%)"];
+const PALETTE = ["hsl(161 78% 36%)", "hsl(340 70% 55%)", "hsl(45 85% 55%)", "hsl(170 60% 45%)", "hsl(195 65% 42%)"];
 const colorFor = (label: string, idx: number) => KNOWN_COLORS[label] ?? PALETTE[idx % PALETTE.length];
 
 const Analytics = () => {
@@ -82,7 +82,7 @@ const Analytics = () => {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
-            <BarChart3 className="h-8 w-8 text-[#2563eb]" />Analytics
+            <BarChart3 className="h-8 w-8 text-secondary" />Analytics
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Multi-class diagnostic insights across Chest X-ray (Pneumonia) and Chest CT (Lung-Cancer Subtypes).
@@ -93,7 +93,7 @@ const Analytics = () => {
             type="button"
             onClick={() => setModalityFilter("all")}
             className={`rounded-full px-4 py-1.5 font-semibold transition-all ${
-              modalityFilter === "all" ? "bg-[#2563eb] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+              modalityFilter === "all" ? "bg-[#07221e] text-[#72f6d5] shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             All Modalities ({analyses.length})
@@ -102,7 +102,7 @@ const Analytics = () => {
             type="button"
             onClick={() => setModalityFilter("xray")}
             className={`rounded-full px-4 py-1.5 font-semibold transition-all ${
-              modalityFilter === "xray" ? "bg-[#2563eb] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+              modalityFilter === "xray" ? "bg-[#07221e] text-[#72f6d5] shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Chest X-ray ({xrayTotal})
@@ -111,7 +111,7 @@ const Analytics = () => {
             type="button"
             onClick={() => setModalityFilter("ct")}
             className={`rounded-full px-4 py-1.5 font-semibold transition-all ${
-              modalityFilter === "ct" ? "bg-[#2563eb] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+              modalityFilter === "ct" ? "bg-[#07221e] text-[#72f6d5] shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Chest CT ({ctTotal})
@@ -121,7 +121,7 @@ const Analytics = () => {
 
       <div className="mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Scans", value: total, sub: `${xrayTotal} X-ray · ${ctTotal} CT`, icon: FileImage, color: "text-[#2563eb]" },
+          { label: "Total Scans", value: total, sub: `${xrayTotal} X-ray · ${ctTotal} CT`, icon: FileImage, color: "text-secondary" },
           { label: "Distinct Classes", value: classCounts.length, sub: "Active diagnostic labels", icon: Layers, color: "text-info" },
           { label: "Abnormal Findings", value: abnormal, sub: "Non-normal classifications", icon: Activity, color: "text-destructive" },
           { label: "Avg. Confidence", value: `${avgConf}%`, sub: "Mean model probability", icon: TrendingUp, color: "text-success" },

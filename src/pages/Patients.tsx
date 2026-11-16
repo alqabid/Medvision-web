@@ -74,7 +74,7 @@ const Patients = () => {
       headerRight={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="rounded-full bg-[#2563eb] px-4 text-white hover:bg-[#1d4ed8]">
+            <Button size="sm" className="rounded-full bg-[#07221e] px-4 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]">
               <Plus className="mr-1.5 h-3.5 w-3.5" />Add Patient
             </Button>
           </DialogTrigger>
@@ -87,7 +87,7 @@ const Patients = () => {
                 <div><Label>Age</Label><Input type="number" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
               </div>
               <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
-              <Button onClick={handleCreate} className="w-full rounded-full bg-[#2563eb] text-white hover:bg-[#1d4ed8]">Save</Button>
+              <Button onClick={handleCreate} className="w-full rounded-full bg-[#07221e] text-[#72f6d5] hover:bg-[#0b352e]">Save</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -95,7 +95,7 @@ const Patients = () => {
     >
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7">
         <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
-          <Users className="h-8 w-8 text-[#2563eb]" />Patient Queue &amp; Directory
+          <Users className="h-8 w-8 text-secondary" />Patient Queue &amp; Directory
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage patient profiles linked to Chest X-ray and Chest CT scans.</p>
       </motion.div>
@@ -130,9 +130,9 @@ const Patients = () => {
                   className="cursor-pointer border-b border-border/50 last:border-0 transition-colors hover:bg-muted/40"
                 >
                   <td className="py-3.5 text-foreground font-semibold">{p.patient_name}</td>
-                  <td className="py-3.5 text-foreground">{p.gender || "—"}</td>
-                  <td className="py-3.5 text-foreground">{p.age ?? "—"}</td>
-                  <td className="py-3.5 text-muted-foreground max-w-xs truncate">{p.notes || "—"}</td>
+                  <td className="py-3.5 text-foreground">{p.gender || "Unspecified"}</td>
+                  <td className="py-3.5 text-foreground">{p.age ?? "N/A"}</td>
+                  <td className="py-3.5 text-muted-foreground max-w-xs truncate">{p.notes || "None"}</td>
                   <td className="py-3.5 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
                   <td className="py-3.5 text-right">
                     <Button

@@ -85,24 +85,24 @@ const PatientDetail = () => {
         <p className="py-12 text-center text-muted-foreground">Patient not found.</p>
       ) : (
         <div className="space-y-7">
-          {/* Medikals-inspired Royal Blue Patient Banner */}
+          {/* Dentivo Deep Emerald & Bioluminescent Mint Patient Banner */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] bg-[#2563eb] p-7 text-white shadow-elevated"
+            className="emerald-stage rounded-[28px] border border-[#72f6d5]/25 p-7 text-white shadow-elevated"
           >
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                Age: {patient.age ?? "—"}
+              <span className="rounded-full border border-[#72f6d5]/35 bg-[#72f6d5]/15 px-3 py-1 text-xs font-semibold text-[#72f6d5]">
+                Age: {patient.age ?? "N/A"}
               </span>
-              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                Gender: {patient.gender || "—"}
+              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
+                Gender: {patient.gender || "Unspecified"}
               </span>
-              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
                 Registered: {new Date(patient.created_at).toLocaleDateString()}
               </span>
             </div>
-            <h1 className="font-display text-3xl font-extrabold">{patient.patient_name}</h1>
+            <h1 className="font-display text-3xl font-extrabold text-white">{patient.patient_name}</h1>
             {patient.notes && (
               <p className="mt-2 max-w-2xl text-sm text-white/85">Notes: {patient.notes}</p>
             )}
@@ -126,14 +126,14 @@ const PatientDetail = () => {
                   return (
                     <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 transition-colors hover:bg-muted/40">
                       <div className="flex items-center gap-3.5">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb]/10 text-[#2563eb]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#07221e] text-[#72f6d5]">
                           <FileImage className="h-5 w-5" />
                         </div>
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <span
                               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                                isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                                isCt ? "bg-[#07221e] text-[#72f6d5]" : "bg-secondary/15 text-secondary"
                               }`}
                             >
                               {formatModalityLabel(a.modality)}

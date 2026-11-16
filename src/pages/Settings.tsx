@@ -54,7 +54,7 @@ const Settings = () => {
         <div className="space-y-6">
           <div className="clinical-surface p-7">
             <div className="mb-5 flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb]/10 text-[#2563eb]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#07221e] text-[#72f6d5]">
                 <User className="h-5 w-5" />
               </div>
               <h2 className="font-display text-lg font-bold text-card-foreground">Clinician Profile</h2>
@@ -77,14 +77,14 @@ const Settings = () => {
                 <Input value={user?.id || ""} disabled className="font-mono text-xs" />
               </div>
             </div>
-            <Button onClick={saveProfile} disabled={saving} className="mt-6 rounded-full bg-[#2563eb] px-6 text-white hover:bg-[#1d4ed8]">
+            <Button onClick={saveProfile} disabled={saving} className="mt-6 rounded-full bg-[#07221e] px-6 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]">
               <Save className="mr-2 h-4 w-4" />{saving ? "Saving..." : "Save Profile"}
             </Button>
           </div>
 
           <div className="clinical-surface p-7">
             <div className="mb-5 flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb]/10 text-[#2563eb]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#07221e] text-[#72f6d5]">
                 <Lock className="h-5 w-5" />
               </div>
               <h2 className="font-display text-lg font-bold text-card-foreground">Password &amp; Security</h2>
@@ -93,7 +93,7 @@ const Settings = () => {
               <Label>New Password</Label>
               <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="At least 8 characters" />
             </div>
-            <Button onClick={changePassword} disabled={pwSaving || !newPassword} className="mt-6 rounded-full bg-[#2563eb] px-6 text-white hover:bg-[#1d4ed8]">
+            <Button onClick={changePassword} disabled={pwSaving || !newPassword} className="mt-6 rounded-full bg-[#07221e] px-6 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]">
               <Lock className="mr-2 h-4 w-4" />{pwSaving ? "Updating..." : "Update Password"}
             </Button>
           </div>

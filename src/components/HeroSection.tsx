@@ -59,17 +59,26 @@ const HeroSection = () => {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_54%,rgba(114,246,213,0.16),transparent_58%)]" />
         </div>
 
-        {/* Subtle SVG Orbital Arc connecting the 4 glass nodes */}
+        {/* Animated SVG Orbital Arc connecting the 4 glass nodes */}
         <svg
           viewBox="0 0 1200 500"
           fill="none"
-          className="pointer-events-none absolute inset-x-0 top-[34%] hidden w-full opacity-55 lg:block"
+          className="pointer-events-none absolute inset-x-0 top-[34%] hidden w-full opacity-75 lg:block"
         >
           <path
             d="M 90 360 Q 600 40 1110 360"
             stroke="url(#orbitalGrad)"
             strokeWidth="1.5"
             strokeDasharray="6 6"
+          />
+          <motion.path
+            d="M 90 360 Q 600 40 1110 360"
+            stroke="#72f6d5"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            initial={{ pathLength: 0.18, pathOffset: 0, opacity: 0.2 }}
+            animate={{ pathOffset: [0, 0.82, 0], opacity: [0.25, 0.9, 0.25] }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
           />
           <defs>
             <linearGradient id="orbitalGrad" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
@@ -109,21 +118,29 @@ const HeroSection = () => {
                   onMouseEnter={() => setActiveNode(node.id)}
                   onClick={() => setActiveNode(node.id)}
                   initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.55, delay: 0.15 + idx * 0.1 }}
+                  animate={{
+                    opacity: 1,
+                    y: [0, idx % 2 === 0 ? -6 : 6, 0],
+                  }}
+                  whileHover={{ scale: 1.05, y: -4 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{
+                    opacity: { duration: 0.55, delay: 0.15 + idx * 0.1 },
+                    y: { duration: 4.5 + idx * 0.6, repeat: Infinity, ease: "easeInOut" },
+                  }}
                   className={`glass-pill group flex items-center gap-3.5 rounded-full px-5 py-3.5 text-left transition-all lg:absolute lg:w-[225px] ${
                     node.position
                   } ${
                     isSelected
-                      ? "border-[#72f6d5]/60 bg-white/15 shadow-[0_0_30px_rgba(114,246,213,0.25)] scale-[1.03]"
-                      : "hover:border-white/30 hover:bg-white/10"
+                      ? "border-[#72f6d5]/70 bg-white/15 shadow-[0_0_34px_rgba(114,246,213,0.3)] scale-[1.03]"
+                      : "hover:border-[#72f6d5]/40 hover:bg-white/10"
                   }`}
                 >
                   <span
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform group-hover:scale-105 ${
                       isSelected
-                        ? "bg-[#72f6d5] text-[#06221e] shadow-[0_0_20px_rgba(114,246,213,0.7)]"
-                        : "bg-[#72f6d5]/80 text-[#06221e]"
+                        ? "bg-[#72f6d5] text-[#06221e] shadow-[0_0_20px_rgba(114,246,213,0.75)]"
+                        : "bg-[#72f6d5]/85 text-[#06221e]"
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -147,7 +164,7 @@ const HeroSection = () => {
             >
               <p className="text-base leading-relaxed text-white/85 sm:text-lg">
                 Dual-modality deep learning for <span className="font-semibold text-white">Chest X-ray pneumonia</span> and{" "}
-                <span className="font-semibold text-[#72f6d5]">Chest CT lung-cancer</span> classification — engineered for clinical clarity.
+                <span className="font-semibold text-[#72f6d5]">Chest CT lung-cancer</span> classification, engineered for clinical clarity.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Link

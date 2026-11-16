@@ -58,14 +58,14 @@ const AuditLogs = () => {
   return (
     <ClinicalShell
       headerRight={
-        <Button onClick={handleExport} size="sm" className="rounded-full bg-[#2563eb] px-4 text-white hover:bg-[#1d4ed8]">
+        <Button onClick={handleExport} size="sm" className="rounded-full bg-[#07221e] px-4 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]">
           <Download className="mr-1.5 h-3.5 w-3.5" />Export CSV
         </Button>
       }
     >
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7">
         <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
-          <ScrollText className="h-8 w-8 text-[#2563eb]" />Audit Trail
+          <ScrollText className="h-8 w-8 text-secondary" />Audit Trail
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Immutable activity log for compliance &amp; security review.
@@ -98,13 +98,13 @@ const AuditLogs = () => {
                 <tr key={r.id} className="border-b border-border/50 last:border-0">
                   <td className="py-3.5 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                   <td className="py-3.5">
-                    <span className="inline-flex items-center rounded-full bg-[#2563eb]/10 px-2.5 py-0.5 text-xs font-semibold text-[#2563eb]">
+                    <span className="inline-flex items-center rounded-full bg-[#07221e] px-2.5 py-0.5 text-xs font-semibold text-[#72f6d5]">
                       {r.action}
                     </span>
                   </td>
                   <td className="py-3.5 text-muted-foreground font-mono text-xs">{r.user_id?.slice(0, 8) ?? "system"}</td>
                   <td className="py-3.5 text-muted-foreground font-mono text-xs max-w-md truncate">
-                    {r.details ? JSON.stringify(r.details) : "—"}
+                    {r.details ? JSON.stringify(r.details) : "None"}
                   </td>
                 </tr>
               ))}

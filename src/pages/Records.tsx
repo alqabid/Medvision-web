@@ -93,7 +93,7 @@ const Records = () => {
   const handleExport = async () => {
     const exportRows = filtered.map(r => ({
       date: new Date(r.created_at).toISOString(),
-      patient: r.patient_id ? patients[r.patient_id]?.patient_name ?? "—" : "—",
+      patient: r.patient_id ? patients[r.patient_id]?.patient_name ?? "Unassigned" : "Unassigned",
       modality: formatModalityLabel(r.modality),
       filename: r.original_filename,
       prediction: r.prediction,
@@ -123,7 +123,7 @@ const Records = () => {
   return (
     <ClinicalShell
       headerRight={
-        <Button onClick={handleExport} size="sm" className="rounded-full bg-[#2563eb] px-4 text-white hover:bg-[#1d4ed8]">
+        <Button onClick={handleExport} size="sm" className="rounded-full bg-[#07221e] px-4 text-[#72f6d5] shadow-sm hover:bg-[#0b352e]">
           <Download className="mr-1.5 h-3.5 w-3.5" />Export CSV
         </Button>
       }
@@ -131,7 +131,7 @@ const Records = () => {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
-            <Database className="h-8 w-8 text-[#2563eb]" />Records Management
+            <Database className="h-8 w-8 text-secondary" />Records Management
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Centralized, encrypted diagnostic records across Chest X-ray and Chest CT{userRole === "admin" ? " (admin view: all users)" : ""}.
@@ -147,7 +147,7 @@ const Records = () => {
         <div className="clinical-surface p-5">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Total Records</span>
-            <FileImage className="h-5 w-5 text-[#2563eb]" />
+            <FileImage className="h-5 w-5 text-secondary" />
           </div>
           <p className="mt-2 font-display text-3xl font-bold text-foreground">{modalityFilteredRows.length}</p>
           <p className="mt-1 text-xs text-muted-foreground">{xrayCount} X-ray · {ctCount} CT</p>
@@ -231,11 +231,11 @@ const Records = () => {
                 return (
                 <tr key={r.id} className="border-b border-border/50 last:border-0">
                   <td className="py-3.5 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
-                  <td className="py-3.5 font-medium text-foreground">{r.patient_id ? patients[r.patient_id]?.patient_name ?? "—" : "—"}</td>
+                  <td className="py-3.5 font-medium text-foreground">{r.patient_id ? patients[r.patient_id]?.patient_name ?? "Unassigned" : "Unassigned"}</td>
                   <td className="py-3.5">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                        isCt ? "bg-[#07221e] text-[#72f6d5]" : "bg-secondary/15 text-secondary"
                       }`}
                     >
                       {formatModalityLabel(r.modality)}

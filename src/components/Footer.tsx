@@ -11,7 +11,7 @@ const Footer = () => (
         AI-powered thoracic diagnostics for Chest X-ray pneumonia detection and Chest CT lung-cancer subtype classification, with Grad-CAM explainability.
       </p>
       <p className="text-xs text-muted-foreground/60">
-        © 2026 MedVision. For research and educational purposes — not a substitute for professional medical judgement.
+        © 2026 MedVision. For research and educational purposes · not a substitute for professional medical judgement.
       </p>
     </div>
   </footer>

@@ -28,8 +28,8 @@ export const generateReport = (data: ReportData) => {
   const modality: ScanModality = data.modality === "ct" ? "ct" : "xray";
   const scanLabel = modality === "ct" ? "Chest CT" : "Chest X-ray";
 
-  // Header
-  doc.setFillColor(15, 65, 81);
+  // Header (Dentivo Deep Emerald)
+  doc.setFillColor(7, 34, 30);
   doc.rect(0, 0, pageWidth, 30, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -46,7 +46,7 @@ export const generateReport = (data: ReportData) => {
   let y = 42;
 
   // Patient section
-  doc.setFillColor(240, 244, 248);
+  doc.setFillColor(240, 245, 243);
   doc.roundedRect(14, y - 6, pageWidth - 28, 48, 2, 2, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -55,7 +55,7 @@ export const generateReport = (data: ReportData) => {
   doc.setFontSize(10);
   const patientRows: Array<[string, string]> = [
     ["Patient Name", data.patientName || "Not specified"],
-    ["Age / Gender", `${data.patientAge ?? "—"}  /  ${data.patientGender || "—"}`],
+    ["Age / Gender", `${data.patientAge ?? "N/A"}  /  ${data.patientGender || "Unspecified"}`],
     ["Scan Type", modality === "ct" ? "Chest CT (Lung-Cancer Subtype Classification)" : "Chest X-ray (Pneumonia Classification)"],
     ["Attending Practitioner", data.practitioner || "Not specified"],
     ["Hospital", data.hospital || "Not specified"],
@@ -106,7 +106,7 @@ export const generateReport = (data: ReportData) => {
       doc.text(cls, 14, y + 4);
       doc.setFillColor(230, 230, 235);
       doc.roundedRect(60, y, barMaxW, 5, 1, 1, "F");
-      doc.setFillColor(15, 118, 135);
+      doc.setFillColor(16, 150, 115);
       doc.roundedRect(60, y, (barMaxW * Number(prob)) / 100, 5, 1, 1, "F");
       doc.text(`${Number(prob).toFixed(1)}%`, pageWidth - 14, y + 4, { align: "right" });
       y += 8;
@@ -181,7 +181,7 @@ export const generateReport = (data: ReportData) => {
     doc.line(14, footY - 4, pageWidth - 14, footY - 4);
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
-    doc.text("AI-assisted analysis — not a substitute for professional medical diagnosis.", 14, footY);
+    doc.text("AI-assisted analysis · not a substitute for professional medical diagnosis.", 14, footY);
     doc.text(`MedVision © ${new Date().getFullYear()}  ·  Page ${i}/${pageCount}`, pageWidth - 14, footY, { align: "right" });
   }
 

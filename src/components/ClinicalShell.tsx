@@ -70,12 +70,12 @@ const ClinicalShell = ({
                   title={item.label}
                   className={`group relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all ${
                     active
-                      ? "bg-[#2563eb] text-white shadow-md shadow-[#2563eb]/25"
+                      ? "bg-[#07221e] text-[#72f6d5] shadow-[0_0_20px_rgba(114,246,213,0.3)] ring-1 ring-[#72f6d5]/40"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="pointer-events-none absolute left-14 z-50 hidden whitespace-nowrap rounded-lg bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-md group-hover:block">
+                  <span className="pointer-events-none absolute left-14 z-50 hidden whitespace-nowrap rounded-lg bg-[#07221e] px-2.5 py-1 text-xs font-medium text-[#72f6d5] shadow-md ring-1 ring-[#72f6d5]/25 group-hover:block">
                     {item.label}
                   </span>
                 </Link>
@@ -97,11 +97,11 @@ const ClinicalShell = ({
 
         {/* Main Workspace Column */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Top Navigation Bar (ProHealth + Medikals pill bar) */}
+          {/* Top Navigation Bar (Dentivo Emerald + Glass Pill Bar) */}
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[26px] border border-border/60 bg-card/90 px-5 py-3 shadow-card backdrop-blur-md">
             <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2.5 lg:hidden">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-accent">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#07221e] text-[#72f6d5]">
                   <Shield className="h-5 w-5" />
                 </div>
                 <span className="font-display text-lg font-bold tracking-tight text-foreground">
@@ -109,20 +109,20 @@ const ClinicalShell = ({
                 </span>
               </Link>
               <div className="hidden items-center gap-2 lg:flex">
-                <span className="h-2.5 w-2.5 rounded-full bg-secondary" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
                 <span className="font-display text-base font-bold tracking-tight text-foreground">
                   MedVision
                 </span>
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <span className="rounded-full bg-[#07221e]/10 px-2.5 py-0.5 text-[11px] font-semibold text-secondary dark:bg-[#72f6d5]/15 dark:text-[#72f6d5]">
                   Thoracic AI Suite
                 </span>
               </div>
             </div>
 
-            {/* Centered Pill Switcher (ProHealth style) */}
+            {/* Centered Pill Switcher */}
             <nav
               aria-label="Workspace Sections"
-              className="flex items-center gap-1 overflow-x-auto rounded-full bg-muted/70 p-1 text-xs"
+              className="flex items-center gap-1 overflow-x-auto rounded-full bg-muted/80 p-1 text-xs"
             >
               {items.map((item) => {
                 const active = isActive(item.path);
@@ -130,9 +130,9 @@ const ClinicalShell = ({
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`relative rounded-full px-4 py-2 font-medium transition-colors whitespace-nowrap ${
+                    className={`relative rounded-full px-4 py-2 font-semibold transition-colors whitespace-nowrap ${
                       active
-                        ? "text-foreground"
+                        ? "text-[#72f6d5]"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -140,7 +140,7 @@ const ClinicalShell = ({
                       <motion.span
                         layoutId="clinical-shell-pill"
                         transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                        className="absolute inset-0 rounded-full bg-card shadow-sm"
+                        className="absolute inset-0 rounded-full bg-[#07221e] shadow-[0_0_16px_rgba(114,246,213,0.2)]"
                       />
                     )}
                     <span className="relative z-10">{item.label}</span>
@@ -149,11 +149,11 @@ const ClinicalShell = ({
               })}
             </nav>
 
-            {/* Right Practitioner Profile Pill (Medikals Dr. Jahn Billoq style) */}
+            {/* Right Practitioner Profile Pill */}
             <div className="flex items-center gap-2.5">
               {headerRight}
               <div className="flex items-center gap-3 rounded-full border border-border/70 bg-muted/40 py-1.5 pl-2 pr-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2563eb] text-xs font-bold text-white shadow-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#07221e] text-xs font-bold text-[#72f6d5] ring-1 ring-[#72f6d5]/40 shadow-sm">
                   {(practitionerName || user?.email || "DR").slice(0, 2).toUpperCase()}
                 </div>
                 <div className="hidden leading-tight sm:block">

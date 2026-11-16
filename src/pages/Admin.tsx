@@ -265,7 +265,7 @@ const Admin = () => {
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{m.provider}</span>
                         {m.is_default && <span className="rounded-full bg-secondary/20 px-2 py-0.5 text-xs text-secondary">default</span>}
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground truncate">{m.model_identifier || m.endpoint || "—"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground truncate">{m.model_identifier || m.endpoint || "N/A"}</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2"><Switch checked={m.is_active} onCheckedChange={(v) => toggleModel(m.id, "is_active", v)} /><span className="text-xs text-muted-foreground">Active</span></div>
