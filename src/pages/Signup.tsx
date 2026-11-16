@@ -40,7 +40,7 @@ const Signup = () => {
   const [hospital, setHospital] = useState<string>("Korle Bu Teaching Hospital");
   const [otherHospital, setOtherHospital] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signUp, signInDemo } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,14 +79,6 @@ const Signup = () => {
       toast.success("Account created! Signing in to workstation...");
       navigate("/dashboard");
     }
-  };
-
-  const handleQuickDemo = async () => {
-    setIsLoading(true);
-    await signInDemo();
-    setIsLoading(false);
-    toast.success("Signed in as Dr. Amara Mensah");
-    navigate("/dashboard");
   };
 
   return (
@@ -307,19 +299,6 @@ const Signup = () => {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
-
-            <div className="mt-5 border-t border-border/70 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading}
-                onClick={handleQuickDemo}
-                className="h-10 w-full rounded-full border-secondary/30 bg-secondary/5 text-xs font-semibold text-foreground hover:bg-secondary/15"
-              >
-                <Stethoscope className="mr-1.5 h-3.5 w-3.5 text-secondary" />
-                Instant Demo Clinician (Dr. Amara Mensah)
-              </Button>
-            </div>
 
             <p className="mt-5 text-center text-sm text-muted-foreground">
               Already have an account?{" "}

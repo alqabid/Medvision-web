@@ -20,7 +20,7 @@ const Login = () => {
   const [otpCode, setOtpCode] = useState("");
   const [step, setStep] = useState<"password" | "otp">("password");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signInDemo, verifyLoginOtp, resendLoginOtp, cancelOtpLogin } = useAuth();
+  const { signIn, verifyLoginOtp, resendLoginOtp, cancelOtpLogin } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const nextParam = params.get("next");
@@ -49,14 +49,6 @@ const Login = () => {
       toast.success("Signed in to MedVision Workstation");
       goToDashboard();
     }
-  };
-
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    await signInDemo();
-    setIsLoading(false);
-    toast.success("Signed in as Dr. Amara Mensah");
-    goToDashboard();
   };
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
@@ -259,23 +251,6 @@ const Login = () => {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </form>
-
-                {/* Instant Demo Access Section */}
-                <div className="mt-6 border-t border-border/70 pt-5">
-                  <p className="mb-3 text-center text-xs font-medium text-muted-foreground">
-                    Or launch an instant clinical session
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isLoading}
-                    onClick={handleDemoLogin}
-                    className="h-10 w-full rounded-full border-secondary/30 bg-secondary/5 text-xs font-semibold text-foreground hover:bg-secondary/15"
-                  >
-                    <Stethoscope className="mr-1.5 h-3.5 w-3.5 text-secondary" />
-                    Instant Demo Clinician (Dr. Amara Mensah)
-                  </Button>
-                </div>
 
                 <p className="mt-6 text-center text-sm text-muted-foreground">
                   Don't have a clinician account?{" "}

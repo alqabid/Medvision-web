@@ -8,7 +8,6 @@ import {
   setActiveLocalAccount,
   upsertLocalAccount,
   addLocalAuditLog,
-  ensureSeedClinicalData,
 } from "@/lib/localClinicalStore";
 
 interface AuthContextType {
@@ -29,7 +28,6 @@ interface AuthContextType {
     password: string,
     requireOtp?: boolean
   ) => Promise<{ error: Error | null; requiresOtp?: boolean }>;
-  signInDemo: () => Promise<void>;
   verifyLoginOtp: (code: string) => Promise<{ error: Error | null }>;
   resendLoginOtp: () => Promise<{ error: Error | null }>;
   cancelOtpLogin: () => void;
@@ -75,7 +73,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const applyLocalAccount = (acct: LocalAccount) => {
     setActiveLocalAccount(acct);
-    ensureSeedClinicalData(acct.id);
     const synUser = buildSyntheticUser(acct);
     const synSession = buildSyntheticSession(acct);
     setUser(synUser);
@@ -89,7 +86,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, supaSession) => {
       if (supaSession?.user) {
-        ensureSeedClinicalData(supaSession.user.id);
         setSession(supaSession);
         setUser(supaSession.user);
         setUserRole("practitioner");
@@ -109,7 +105,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     supabase.auth.getSession().then(({ data: { session: supaSession } }) => {
       if (supaSession?.user) {
-        ensureSeedClinicalData(supaSession.user.id);
         setSession(supaSession);
         setUser(supaSession.user);
         setUserRole("practitioner");
@@ -167,7 +162,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           hospital,
         });
         setActiveLocalAccount(synced);
-        ensureSeedClinicalData(data.user.id);
         return { error: null, immediateLogin: true };
       }
 
@@ -185,7 +179,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           hospital,
         });
         setActiveLocalAccount(synced);
-        ensureSeedClinicalData(signInData.user.id);
         return { error: null, immediateLogin: true };
       }
     } catch {
@@ -222,7 +215,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             hospital: (meta.hospital as string) || "Korle Bu Teaching Hospital",
           });
           setActiveLocalAccount(synced);
-          ensureSeedClinicalData(data.user.id);
           return { error: null, requiresOtp: false };
         }
 
@@ -274,21 +266,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       return { error: new Error(err?.message || "Sign in failed") };
     }
-  };
-
-  const signInDemo = async () => {
-    const demoAccount = upsertLocalAccount({
-      email: "dr.mensah@medvision.clinical",
-      full_name: "Dr. Amara Mensah",
-      specialty: "Thoracic Radiology",
-      hospital: "Korle Bu Teaching Hospital",
-    });
-    applyLocalAccount(demoAccount);
-    addLocalAuditLog({
-      user_id: demoAccount.id,
-      action: "clinician_signin",
-      details: { email: demoAccount.email, clinician: demoAccount.full_name },
-    });
   };
 
   const verifyLoginOtp = async (code: string) => {
@@ -344,7 +321,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         pendingOtpEmail,
         signUp,
         signIn,
-        signInDemo,
         verifyLoginOtp,
         resendLoginOtp,
         cancelOtpLogin,
