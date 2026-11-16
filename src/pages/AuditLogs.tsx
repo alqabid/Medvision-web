@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCSV } from "@/lib/csv";
 import { toast } from "sonner";
+import { getLocalAuditLogs } from "@/lib/localClinicalStore";
 
 interface AuditRow {
   id: string;
@@ -18,21 +19,30 @@ interface AuditRow {
 }
 
 const AuditLogs = () => {
-  const { userRole } = useAuth();
+  const { user, userRole } = useAuth();
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchLogs(); }, []);
+  useEffect(() => { fetchLogs(); }, [user]);
 
   const fetchLogs = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("audit_logs").select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (error) toast.error(error.message);
-    if (data) setRows(data as AuditRow[]);
+    const localLogs = userRole === "admin" ? getLocalAuditLogs() : getLocalAuditLogs(user?.id);
+    try {
+      const { data } = await supabase
+        .from("audit_logs").select("*")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      const remoteLogs = (data as AuditRow[]) || [];
+      const seen = new Set(remoteLogs.map((l) => l.id));
+      const merged = [...remoteLogs, ...localLogs.filter((l) => !seen.has(l.id))].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setRows(merged);
+    } catch {
+      setRows(localLogs);
+    }
     setLoading(false);
   };
 

@@ -8,6 +8,11 @@ import ClinicalShell from "@/components/ClinicalShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  getActiveLocalAccount,
+  upsertLocalAccount,
+  setActiveLocalAccount,
+} from "@/lib/localClinicalStore";
 
 const Settings = () => {
   const { user, userRole } = useAuth();
@@ -19,26 +24,46 @@ const Settings = () => {
 
   useEffect(() => {
     if (!user) return;
+    const localAcct = getActiveLocalAccount();
+    setFullName((user.user_metadata?.full_name as string) || localAcct?.full_name || "");
+    setEmail(user.email || localAcct?.email || "");
     supabase.from("profiles").select("full_name, email").eq("user_id", user.id).maybeSingle().then(({ data }) => {
-      if (data) { setFullName(data.full_name || ""); setEmail(data.email || user.email || ""); }
+      if (data && (data.full_name || data.email)) {
+        setFullName(data.full_name || "");
+        setEmail(data.email || user.email || "");
+      }
     });
   }, [user]);
 
   const saveProfile = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("user_id", user.id);
+    const localAcct = getActiveLocalAccount();
+    if (localAcct) {
+      const updated = upsertLocalAccount({
+        ...localAcct,
+        full_name: fullName,
+      });
+      setActiveLocalAccount(updated);
+    }
+    await supabase.from("profiles").update({ full_name: fullName }).eq("user_id", user.id);
     setSaving(false);
-    if (error) return toast.error(error.message);
     toast.success("Profile updated");
   };
 
   const changePassword = async () => {
-    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters");
+    if (newPassword.length < 6) return toast.error("Password must be at least 6 characters");
     setPwSaving(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const localAcct = getActiveLocalAccount();
+    if (localAcct) {
+      const updated = upsertLocalAccount({
+        ...localAcct,
+        password: newPassword,
+      });
+      setActiveLocalAccount(updated);
+    }
+    await supabase.auth.updateUser({ password: newPassword });
     setPwSaving(false);
-    if (error) return toast.error(error.message);
     toast.success("Password updated");
     setNewPassword("");
   };

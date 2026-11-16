@@ -4,6 +4,7 @@ import { BarChart3, TrendingUp, Activity, FileImage, Layers } from "lucide-react
 import ClinicalShell from "@/components/ClinicalShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalAnalyses } from "@/lib/localClinicalStore";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
 
 interface AnalysisRecord {
@@ -38,8 +39,11 @@ const Analytics = () => {
 
   useEffect(() => {
     if (!user) return;
+    const localItems = getLocalAnalyses(user.id);
     supabase.from("analyses").select("*").eq("user_id", user.id).then(({ data }) => {
-      if (data) setAnalyses(data as AnalysisRecord[]);
+      const remoteItems = (data as AnalysisRecord[]) || [];
+      const seen = new Set(remoteItems.map((r) => r.id));
+      setAnalyses([...remoteItems, ...localItems.filter((l) => !seen.has(l.id))]);
     });
   }, [user]);
 

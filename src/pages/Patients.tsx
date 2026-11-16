@@ -10,6 +10,12 @@ import ClinicalShell from "@/components/ClinicalShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  getLocalPatients,
+  addLocalPatient,
+  deleteLocalPatient,
+  addLocalAuditLog,
+} from "@/lib/localClinicalStore";
 
 interface Patient {
   id: string;
@@ -31,29 +37,42 @@ const Patients = () => {
 
   useEffect(() => {
     fetchPatients();
-  }, []);
+  }, [user]);
 
   const fetchPatients = async () => {
     setLoading(true);
-    const { data } = await supabase.from("patients").select("*").order("created_at", { ascending: false });
-    if (data) setPatients(data);
+    const localList = getLocalPatients(user?.id);
+    try {
+      const { data } = await supabase.from("patients").select("*").order("created_at", { ascending: false });
+      const remoteList = (data as Patient[]) || [];
+      const seen = new Set(remoteList.map((p) => p.id));
+      const merged = [...remoteList, ...localList.filter((p) => !seen.has(p.id))].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setPatients(merged);
+    } catch {
+      setPatients(localList);
+    }
     setLoading(false);
   };
 
   const handleCreate = async () => {
     if (!user || !form.patient_name.trim()) return;
-    const { error } = await supabase.from("patients").insert({
+    const payload = {
       created_by: user.id,
       patient_name: form.patient_name.trim(),
       gender: form.gender || null,
       age: form.age ? Number(form.age) : null,
       notes: form.notes || null,
-    });
+    };
+
+    const { error } = await supabase.from("patients").insert(payload);
     if (error) {
-      toast.error(error.message);
-      return;
+      addLocalPatient(payload);
+    } else {
+      await supabase.from("audit_logs").insert({ user_id: user.id, action: "create_patient", details: { name: form.patient_name } });
     }
-    await supabase.from("audit_logs").insert({ user_id: user.id, action: "create_patient", details: { name: form.patient_name } });
+    addLocalAuditLog({ user_id: user.id, action: "create_patient", details: { name: form.patient_name } });
     toast.success("Patient added");
     setOpen(false);
     setForm({ patient_name: "", gender: "", age: "", notes: "" });
@@ -61,8 +80,8 @@ const Patients = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("patients").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    deleteLocalPatient(id);
+    await supabase.from("patients").delete().eq("id", id);
     toast.success("Patient removed");
     fetchPatients();
   };

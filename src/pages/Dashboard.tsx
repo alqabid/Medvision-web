@@ -152,43 +152,88 @@ const Dashboard = () => {
     checkBackendHealth();
   }, [user]);
 
+  const getApiCandidates = (): string[] => {
+    const envUrl = import.meta.env.VITE_MEDVISION_API_URL;
+    const localUrl = "http://localhost:8000";
+    const isLocalHost =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    if (isLocalHost) {
+      return envUrl && envUrl !== localUrl ? [localUrl, envUrl] : [localUrl];
+    }
+    return envUrl && envUrl !== localUrl ? [envUrl, localUrl] : [localUrl];
+  };
+
   const checkBackendHealth = async () => {
-    try {
-      const apiUrl = import.meta.env.VITE_MEDVISION_API_URL || "http://localhost:8000";
-      const res = await fetch(`${apiUrl}/health`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data?.modalities) {
-        setBackendModalities({
-          xray: Boolean(data.modalities.xray),
-          ct: Boolean(data.modalities.ct),
-        });
+    for (const candidate of getApiCandidates()) {
+      try {
+        const res = await fetch(`${candidate}/health`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data?.modalities) {
+          setBackendModalities({
+            xray: Boolean(data.modalities.xray),
+            ct: Boolean(data.modalities.ct),
+          });
+          return;
+        }
+      } catch {
+        // try next candidate
       }
-    } catch {
-      // ignore offline health check
     }
   };
 
   const fetchProfile = async () => {
     if (!user) return;
-    const { data } = await supabase.from("profiles").select("full_name, email, hospital").eq("user_id", user.id).maybeSingle();
-    if (data) setProfile(data);
+    try {
+      const { data } = await supabase.from("profiles").select("full_name, email, hospital").eq("user_id", user.id).maybeSingle();
+      if (data && (data.full_name || data.email)) {
+        setProfile(data);
+        return;
+      }
+    } catch {
+      // fall back to local account / user metadata
+    }
+    const localAcct = getActiveLocalAccount();
+    setProfile({
+      full_name: (user.user_metadata?.full_name as string) || localAcct?.full_name || user.email?.split("@")[0] || "Clinician",
+      email: user.email || localAcct?.email || "",
+      hospital: (user.user_metadata?.hospital as string) || localAcct?.hospital || null,
+    });
   };
 
   const fetchHistory = async () => {
     if (!user) return;
-    const { data } = await supabase.from("analyses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
-    if (data) setHistory(data);
+    const localItems = getLocalAnalyses(user.id);
+    try {
+      const { data } = await supabase.from("analyses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
+      const remoteItems = (data as AnalysisRecord[]) || [];
+      const seen = new Set(remoteItems.map((r) => r.id));
+      const merged = [...remoteItems, ...localItems.filter((l) => !seen.has(l.id))].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setHistory(merged);
+    } catch {
+      setHistory(localItems);
+    }
   };
 
   const fetchPatients = async () => {
     if (!user) return;
-    const { data } = await supabase.from("patients").select("id, patient_name, age, gender, notes").order("created_at", { ascending: false });
-    if (data) {
-      const list = data as PatientRow[];
-      setPatients(list);
-      if (!selectedPatientId && list.length > 0) {
-        setSelectedPatientId(list[0].id);
+    const localList = getLocalPatients(user.id);
+    try {
+      const { data } = await supabase.from("patients").select("id, patient_name, age, gender, notes").order("created_at", { ascending: false });
+      const remoteList = (data as PatientRow[]) || [];
+      const seen = new Set(remoteList.map((p) => p.id));
+      const merged = [...remoteList, ...localList.filter((p) => !seen.has(p.id))];
+      setPatients(merged);
+      if (!selectedPatientId && merged.length > 0) {
+        setSelectedPatientId(merged[0].id);
+      }
+    } catch {
+      setPatients(localList);
+      if (!selectedPatientId && localList.length > 0) {
+        setSelectedPatientId(localList[0].id);
       }
     }
   };
@@ -222,19 +267,34 @@ const Dashboard = () => {
       return patients.find((p) => p.id === selectedPatientId) ?? null;
     }
     if (!newPatient.patient_name.trim()) return null;
-    const { data, error } = await supabase.from("patients").insert({
+
+    const payload = {
       patient_name: newPatient.patient_name.trim(),
       age: newPatient.age ? parseInt(newPatient.age, 10) : null,
       gender: newPatient.gender || null,
       notes: newPatient.notes || null,
       created_by: user!.id,
-    }).select().maybeSingle();
-    if (error || !data) { toast.error("Could not save patient: " + (error?.message || "unknown")); return null; }
+    };
+
+    try {
+      const { data, error } = await supabase.from("patients").insert(payload).select().maybeSingle();
+      if (!error && data) {
+        await fetchPatients();
+        setPatientMode("existing");
+        setSelectedPatientId(data.id);
+        setNewPatient(emptyPatient);
+        return data as PatientRow;
+      }
+    } catch {
+      // fall back to local patient storage
+    }
+
+    const createdLocal = addLocalPatient(payload);
     await fetchPatients();
     setPatientMode("existing");
-    setSelectedPatientId(data.id);
+    setSelectedPatientId(createdLocal.id);
     setNewPatient(emptyPatient);
-    return data as PatientRow;
+    return createdLocal;
   };
 
   const handleAnalyze = async () => {
@@ -252,27 +312,49 @@ const Dashboard = () => {
       const cleanFile = await stripImageMetadata(selectedFile);
 
       const filePath = `${user.id}/${Date.now()}-${selectedFile.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("xray-images")
-        .upload(filePath, cleanFile);
-      if (uploadError) throw new Error("Failed to upload image: " + uploadError.message);
+      try {
+        await supabase.storage.from("xray-images").upload(filePath, cleanFile);
+      } catch {
+        // Non-blocking when in local clinician session
+      }
 
       const apiUrl = import.meta.env.VITE_MEDVISION_API_URL || "http://localhost:8000";
-      const formData = new FormData();
-      formData.append("file", cleanFile);
-      formData.append("modality", modality);
-      const response = await fetch(`${apiUrl}/predict`, { method: "POST", body: formData });
-      if (!response.ok) {
-        let detailMessage = "";
+      const candidates = getApiCandidates();
+      let response: Response | null = null;
+      let lastErrorMsg = "";
+
+      for (const baseUrl of candidates.length ? candidates : [apiUrl]) {
         try {
-          const errPayload = await response.json();
-          if (errPayload && typeof errPayload.detail === "string") {
-            detailMessage = errPayload.detail;
+          const formData = new FormData();
+          formData.append("file", cleanFile);
+          formData.append("modality", modality);
+          const res = await fetch(`${baseUrl}/predict`, { method: "POST", body: formData });
+          if (res.ok) {
+            response = res;
+            break;
           }
-        } catch {
-          // ignore JSON parse failure
+          let detailMessage = "";
+          try {
+            const errPayload = await res.json();
+            if (errPayload && typeof errPayload.detail === "string") {
+              detailMessage = errPayload.detail;
+            }
+          } catch {
+            // ignore JSON parse failure
+          }
+          lastErrorMsg = detailMessage || `Server returned HTTP ${res.status}`;
+          response = res;
+          // If 503 (e.g. CT model intentionally missing on that server), stop or try local if available
+          if (res.status === 503 && candidates.length === 1) {
+            break;
+          }
+        } catch (fetchErr: any) {
+          lastErrorMsg = fetchErr?.message || "Model analysis failed. Is the backend server running?";
         }
-        throw new Error(detailMessage || "Model analysis failed. Is the backend server running?");
+      }
+
+      if (!response || !response.ok) {
+        throw new Error(lastErrorMsg || "Model analysis failed. Is the backend server running?");
       }
 
       const modelResult = await response.json();
@@ -285,7 +367,7 @@ const Dashboard = () => {
           ? "MobileNetV2 (4-class CT: Adenocarcinoma/Large Cell/Normal/Squamous Cell, fine-tuned)"
           : "MobileNetV2 (3-class: Bacterial/Normal/Viral, fine-tuned)");
 
-      const { error: insertError } = await supabase.from("analyses").insert({
+      const analysisRecord = {
         user_id: user.id,
         patient_id: patient.id,
         image_path: filePath,
@@ -295,8 +377,21 @@ const Dashboard = () => {
         confidence: modelResult.confidence,
         findings,
         model_used: modelUsed,
+      };
+
+      const { error: insertError } = await supabase.from("analyses").insert(analysisRecord);
+      if (insertError) {
+        addLocalAnalysis(analysisRecord);
+      }
+      addLocalAuditLog({
+        user_id: user.id,
+        action: `analyze_${resolvedModality}`,
+        details: {
+          patient: patient.patient_name,
+          prediction: modelResult.prediction,
+          confidence: modelResult.confidence,
+        },
       });
-      if (insertError) console.error("DB insert error:", insertError);
 
       setResult({
         modality: resolvedModality,

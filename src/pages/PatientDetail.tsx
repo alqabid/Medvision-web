@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import ClinicalShell from "@/components/ClinicalShell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getLocalPatients, getLocalAnalyses } from "@/lib/localClinicalStore";
 
 interface Patient {
   id: string;
@@ -48,26 +49,45 @@ const PatientDetail = () => {
   const fetchPatientAndHistory = async (patientId: string) => {
     setLoading(true);
 
-    const { data: patientData, error: patientError } = await supabase
-      .from("patients")
-      .select("*")
-      .eq("id", patientId)
-      .maybeSingle();
+    let foundPatient: Patient | null = null;
+    try {
+      const { data: patientData } = await supabase
+        .from("patients")
+        .select("*")
+        .eq("id", patientId)
+        .maybeSingle();
+      if (patientData) foundPatient = patientData as Patient;
+    } catch {
+      // ignore
+    }
 
-    if (patientError || !patientData) {
+    if (!foundPatient) {
+      foundPatient = getLocalPatients().find((p) => p.id === patientId) ?? null;
+    }
+
+    if (!foundPatient) {
       toast.error("Could not load this patient record");
       setLoading(false);
       return;
     }
-    setPatient(patientData);
+    setPatient(foundPatient);
 
-    const { data: analysesData } = await supabase
-      .from("analyses")
-      .select("*")
-      .eq("patient_id", patientId)
-      .order("created_at", { ascending: false });
-
-    if (analysesData) setAnalyses(analysesData);
+    const localHistory = getLocalAnalyses().filter((a) => a.patient_id === patientId);
+    try {
+      const { data: analysesData } = await supabase
+        .from("analyses")
+        .select("*")
+        .eq("patient_id", patientId)
+        .order("created_at", { ascending: false });
+      const remoteHistory = (analysesData as AnalysisRecord[]) || [];
+      const seen = new Set(remoteHistory.map((a) => a.id));
+      const merged = [...remoteHistory, ...localHistory.filter((a) => !seen.has(a.id))].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setAnalyses(merged);
+    } catch {
+      setAnalyses(localHistory);
+    }
     setLoading(false);
   };
 

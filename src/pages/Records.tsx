@@ -14,6 +14,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCSV } from "@/lib/csv";
 import { toast } from "sonner";
+import {
+  getLocalAnalyses,
+  getLocalPatients,
+  addLocalAuditLog,
+} from "@/lib/localClinicalStore";
 
 // Result colours: "Normal" green, "Invalid" amber, every other class red
 const styleFor = (p: string) => {
@@ -58,12 +63,28 @@ const Records = () => {
   const fetchAll = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("analyses").select("*")
-      .order("created_at", { ascending: false });
-    const { data: pats } = await supabase.from("patients").select("id, patient_name, gender, age");
-    if (data) setRows(data as AnalysisRow[]);
-    if (pats) setPatients(Object.fromEntries(pats.map(p => [p.id, p as PatientRow])));
+    const localRows = userRole === "admin" ? getLocalAnalyses() : getLocalAnalyses(user.id);
+    const localPats = getLocalPatients();
+    try {
+      const { data } = await supabase
+        .from("analyses").select("*")
+        .order("created_at", { ascending: false });
+      const { data: pats } = await supabase.from("patients").select("id, patient_name, gender, age");
+      const remoteRows = (data as AnalysisRow[]) || [];
+      const seen = new Set(remoteRows.map((r) => r.id));
+      const mergedRows = [...remoteRows, ...localRows.filter((r) => !seen.has(r.id))].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setRows(mergedRows);
+
+      const patMap: Record<string, PatientRow> = {};
+      localPats.forEach((p) => { patMap[p.id] = p; });
+      (pats || []).forEach((p) => { patMap[p.id] = p as PatientRow; });
+      setPatients(patMap);
+    } catch {
+      setRows(localRows);
+      setPatients(Object.fromEntries(localPats.map((p) => [p.id, p])));
+    }
     setLoading(false);
   };
 

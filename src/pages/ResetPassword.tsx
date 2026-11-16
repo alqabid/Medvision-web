@@ -27,25 +27,40 @@ const ResetPassword = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-2">
-          <Shield className="h-8 w-8 text-secondary" />
-          <span className="font-display text-2xl font-bold text-foreground">MedVision</span>
-        </div>
-        <h1 className="mb-2 font-display text-2xl font-bold text-foreground">Set New Password</h1>
-        <p className="mb-8 text-sm text-muted-foreground">Enter a new password for your account.</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="password">New Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" placeholder="At least 8 characters" />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
+        <div className="clinical-surface p-8">
+          <div className="mb-6 flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#07221e] text-[#72f6d5]">
+              <Shield className="h-5 w-5" />
             </div>
+            <span className="font-display text-2xl font-bold text-foreground">MedVision</span>
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-            {loading ? "Updating..." : "Update Password"}
-          </Button>
-        </form>
+          <h1 className="mb-2 font-display text-2xl font-extrabold text-foreground">Set New Password</h1>
+          <p className="mb-6 text-sm text-muted-foreground">Enter a new password for your clinician account.</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="password">New Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 rounded-2xl pl-10"
+                  placeholder="At least 8 characters"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-full bg-[#07221e] text-sm font-bold text-[#72f6d5] hover:bg-[#0b352e]"
+            >
+              {loading ? "Updating..." : "Update Password"}
+            </Button>
+          </form>
+        </div>
       </motion.div>
     </div>
   );
