@@ -92,10 +92,8 @@ const Signup = () => {
   return (
     <div className="flex min-h-screen bg-background p-3 sm:p-5">
       {/* Left: Dentivo Deep Emerald Bioluminescent 3D Lungs Showcase */}
-      <div className="emerald-stage relative hidden w-1/2 flex-col justify-between overflow-hidden rounded-[32px] border border-[#72f6d5]/20 p-10 text-white shadow-elevated lg:flex">
+      <div className="emerald-stage relative hidden w-1/2 flex-col justify-between overflow-hidden rounded-[32px] p-10 text-white shadow-elevated lg:flex">
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="absolute h-80 w-80 rounded-full border border-[#72f6d5]/20 animate-pulse-halo" />
-          <div className="absolute h-[420px] w-[420px] rounded-full border border-dashed border-[#72f6d5]/15" />
           <img
             src={lungsHero}
             alt="Translucent Bioluminescent Lungs"
@@ -113,9 +111,6 @@ const Signup = () => {
               MedVision
             </span>
           </Link>
-          <span className="glass-pill rounded-full px-3.5 py-1 text-xs font-medium text-[#72f6d5]">
-            Clinician Onboarding
-          </span>
         </div>
 
         <div className="relative z-10 my-auto space-y-3 max-w-sm">
@@ -168,7 +163,7 @@ const Signup = () => {
         <div className="flex items-center justify-between">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Home
@@ -188,10 +183,9 @@ const Signup = () => {
         >
           <div className="clinical-surface p-7 sm:p-9">
             <div className="mb-5">
-              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-secondary">
-                <span className="h-2 w-2 rounded-full bg-secondary" />
+              <p className="text-xs font-bold uppercase tracking-wider text-secondary">
                 Clinician Registration
-              </span>
+              </p>
               <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-foreground">
                 Create account
               </h1>

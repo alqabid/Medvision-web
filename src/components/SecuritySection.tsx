@@ -5,7 +5,7 @@ const pillars = [
   {
     icon: Shield,
     title: "Care-Team Access Controls",
-    description: "Dedicated permissions for practitioners and clinical administrators keep patient studies restricted to authorized care teams.",
+    description: "Dedicated permissions for practitioners keep patient studies restricted to authorized care teams.",
   },
   {
     icon: Lock,
@@ -36,10 +36,6 @@ const SecuritySection = () => {
               viewport={{ once: true }}
               className="space-y-5 lg:col-span-5"
             >
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#72f6d5]/30 bg-[#72f6d5]/10 px-4 py-1.5 text-xs font-semibold text-[#72f6d5]">
-                <span className="h-2 w-2 rounded-full bg-[#72f6d5]" />
-                Clinical Trust &amp; Privacy
-              </span>
               <h2 className="font-display text-3xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
                 Built Around <span className="text-[#72f6d5]">Patient Trust</span>
               </h2>

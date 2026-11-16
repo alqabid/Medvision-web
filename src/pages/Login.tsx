@@ -91,14 +91,12 @@ const Login = () => {
   return (
     <div className="flex min-h-screen bg-background p-3 sm:p-5">
       {/* Left: Dentivo Deep Emerald Bioluminescent 3D Lungs Showcase */}
-      <div className="emerald-stage relative hidden w-1/2 flex-col justify-between overflow-hidden rounded-[32px] border border-[#72f6d5]/20 p-10 text-white shadow-elevated lg:flex">
+      <div className="emerald-stage relative hidden w-1/2 flex-col justify-between overflow-hidden rounded-[32px] p-10 text-white shadow-elevated lg:flex">
         {/* Ambient 3D Lungs Backdrop */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="absolute h-80 w-80 rounded-full border border-[#72f6d5]/20 animate-pulse-halo" />
-          <div className="absolute h-[420px] w-[420px] rounded-full border border-dashed border-[#72f6d5]/15" />
           <img
             src={lungsHero}
-            alt="3D Translucent Bioluminescent Lungs"
+            alt="Translucent Bioluminescent Lungs"
             className="h-full w-full object-cover object-center opacity-90 mix-blend-screen animate-lung-breathe"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#07221e]/80 via-transparent to-[#07221e]/90" />
@@ -114,9 +112,6 @@ const Login = () => {
               MedVision
             </span>
           </Link>
-          <span className="glass-pill rounded-full px-3.5 py-1 text-xs font-medium text-[#72f6d5]">
-            Thoracic AI Workstation
-          </span>
         </div>
 
         {/* Floating Glass Modality Callout Pods */}
@@ -130,7 +125,7 @@ const Login = () => {
               <Activity className="h-5 w-5" />
             </span>
             <div>
-              <div className="text-xs font-bold text-white">Chest X-Ray · 3-Class</div>
+              <div className="text-xs font-bold text-white">Chest Radiography</div>
               <div className="text-[11px] text-white/75">Bacterial · Viral · Normal</div>
             </div>
           </motion.div>
@@ -144,7 +139,7 @@ const Login = () => {
               <Layers className="h-5 w-5" />
             </span>
             <div>
-              <div className="text-xs font-bold text-white">Chest CT · 4-Class NSCLC</div>
+              <div className="text-xs font-bold text-white">Chest CT Oncology</div>
               <div className="text-[11px] text-white/75">Adenocarcinoma · Large Cell · Squamous</div>
             </div>
           </motion.div>
@@ -166,7 +161,7 @@ const Login = () => {
         <div className="flex items-center justify-between">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Home
@@ -188,10 +183,9 @@ const Login = () => {
             {step === "password" ? (
               <>
                 <div className="mb-6">
-                  <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-secondary">
-                    <span className="h-2 w-2 rounded-full bg-secondary" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-secondary">
                     Clinician Portal
-                  </span>
+                  </p>
                   <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-foreground">
                     Welcome back
                   </h1>

@@ -121,7 +121,6 @@ const ClinicalShell = ({
                 </span>
               </Link>
               <div className="hidden items-center gap-2 lg:flex">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
                 <span className="font-display text-base font-bold tracking-tight text-foreground">
                   MedVision
                 </span>

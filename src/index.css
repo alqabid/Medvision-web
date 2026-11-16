@@ -227,10 +227,10 @@
   }
 
   .glass-pill {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.13) 0%, rgba(114, 246, 213, 0.05) 100%);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(114, 246, 213, 0.22);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.11) 0%, rgba(114, 246, 213, 0.05) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.28);
   }
 
   .emerald-stage {
@@ -238,6 +238,6 @@
   }
 
   .clinical-surface {
-    @apply rounded-[28px] border border-border/70 bg-card shadow-card;
+    @apply rounded-[28px] bg-card shadow-card;
   }
 }

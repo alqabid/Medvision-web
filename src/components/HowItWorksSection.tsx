@@ -38,10 +38,9 @@ const HowItWorksSection = () => {
           viewport={{ once: true }}
           className="mb-14 text-center"
         >
-          <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-secondary">
-            <span className="h-2 w-2 rounded-full bg-secondary" />
+          <p className="text-xs font-bold uppercase tracking-wider text-secondary">
             Effortless Workflow
-          </span>
+          </p>
           <h2 className="mt-2 mb-3 font-display text-3xl font-bold text-foreground sm:text-4xl">
             From Scan to Clinical Summary in Seconds
           </h2>
@@ -59,7 +58,7 @@ const HowItWorksSection = () => {
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
               whileHover={{ y: -4 }}
-              className="rounded-[30px] border border-border/60 bg-card p-7 shadow-card transition-all hover:border-secondary/40 hover:shadow-elevated"
+              className="rounded-[30px] bg-card p-7 shadow-card transition-all hover:shadow-elevated"
             >
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#07221e] text-[#72f6d5]">

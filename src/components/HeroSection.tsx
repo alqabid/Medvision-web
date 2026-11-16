@@ -51,7 +51,7 @@ const HeroSection = () => {
 
   return (
     <section className="relative bg-background px-3 pt-20 pb-8 sm:px-6">
-      <div className="relative mx-auto min-h-[88vh] max-w-[1440px] overflow-hidden rounded-[36px] border border-white/10 bg-[#07221e] shadow-elevated">
+      <div className="relative mx-auto min-h-[88vh] max-w-[1440px] overflow-hidden rounded-[36px] bg-[#07221e] shadow-elevated">
         {/* Central 3D Translucent Lungs Backdrop (Dentivo Studio Style) */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <img
@@ -63,7 +63,7 @@ const HeroSection = () => {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_54%,rgba(114,246,213,0.16),transparent_58%)]" />
         </div>
 
-        {/* Animated SVG Orbital Arc connecting the 4 glass nodes */}
+        {/* Continuous Orbital Arc connecting the 4 glass nodes */}
         <svg
           viewBox="0 0 1200 500"
           fill="none"
@@ -72,8 +72,7 @@ const HeroSection = () => {
           <path
             d="M 90 360 Q 600 40 1110 360"
             stroke="url(#orbitalGrad)"
-            strokeWidth="1.5"
-            strokeDasharray="6 6"
+            strokeWidth="1.25"
           />
           <motion.path
             d="M 90 360 Q 600 40 1110 360"
@@ -86,9 +85,9 @@ const HeroSection = () => {
           />
           <defs>
             <linearGradient id="orbitalGrad" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="rgba(114,246,213,0.05)" />
-              <stop offset="50%" stopColor="rgba(114,246,213,0.75)" />
-              <stop offset="100%" stopColor="rgba(114,246,213,0.05)" />
+              <stop offset="0%" stopColor="rgba(114,246,213,0.04)" />
+              <stop offset="50%" stopColor="rgba(114,246,213,0.55)" />
+              <stop offset="100%" stopColor="rgba(114,246,213,0.04)" />
             </linearGradient>
           </defs>
         </svg>
@@ -110,7 +109,7 @@ const HeroSection = () => {
             </h1>
           </motion.div>
 
-          {/* Center Interactive Orbital Glass Pills (Dentivo 4-node layout) */}
+          {/* Center Interactive Orbital Glass Pills (Dentivo 4-node layout, borderless soft glass) */}
           <div className="relative my-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:my-0 lg:block lg:h-[260px]">
             {ORBITAL_NODES.map((node, idx) => {
               const Icon = node.icon;
@@ -136,8 +135,8 @@ const HeroSection = () => {
                     node.position
                   } ${
                     isSelected
-                      ? "border-[#72f6d5]/70 bg-white/15 shadow-[0_0_34px_rgba(114,246,213,0.3)] scale-[1.03]"
-                      : "hover:border-[#72f6d5]/40 hover:bg-white/10"
+                      ? "bg-white/15 shadow-[0_0_34px_rgba(114,246,213,0.28)] scale-[1.03]"
+                      : "hover:bg-white/10"
                   }`}
                 >
                   <span
@@ -182,22 +181,21 @@ const HeroSection = () => {
               </div>
             </motion.div>
 
-            {/* Bottom-Right Floating Glass Focus Card */}
+            {/* Bottom-Right Floating Glass Focus Card (No dot, no border) */}
             <motion.div
               key={currentNode.id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35 }}
-              className="glass-pill w-full max-w-md rounded-3xl p-5 text-left"
+              className="glass-pill w-full max-w-md rounded-3xl p-6 text-left"
             >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#72f6d5]">
-                  <span className="h-2 w-2 rounded-full bg-[#72f6d5]" />
+              <div className="mb-1.5 flex items-baseline justify-between">
+                <span className="font-display text-base font-bold text-white">
                   {currentNode.title}
                 </span>
-                <span className="text-[11px] font-medium text-white/65">{currentNode.subtitle}</span>
+                <span className="text-xs font-medium text-[#72f6d5]">{currentNode.subtitle}</span>
               </div>
-              <p className="text-xs leading-relaxed text-white/85">{currentNode.detail}</p>
+              <p className="text-xs leading-relaxed text-white/80">{currentNode.detail}</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {currentNode.tags.map((c) => (
                   <span key={c} className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-white/90">
