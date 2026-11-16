@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, LogOut, ArrowLeft, Plus, Search, Trash2, Users } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Plus, Search, Trash2, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import ClinicalShell from "@/components/ClinicalShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,7 +21,7 @@ interface Patient {
 }
 
 const Patients = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [search, setSearch] = useState("");
@@ -68,103 +69,88 @@ const Patients = () => {
 
   const filtered = patients.filter(p => p.patient_name.toLowerCase().includes(search.toLowerCase()));
 
-  const handleSignOut = async () => { await signOut(); navigate("/"); };
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-secondary" />
-            <span className="font-display text-lg font-bold text-foreground">MedVision</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/dashboard"><ArrowLeft className="mr-2 h-4 w-4" />Dashboard</Link>
+    <ClinicalShell
+      headerRight={
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="rounded-full bg-[#2563eb] px-4 text-white hover:bg-[#1d4ed8]">
+              <Plus className="mr-1.5 h-3.5 w-3.5" />Add Patient
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-6 py-10">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <h1 className="mb-2 font-display text-3xl font-bold text-foreground flex items-center gap-2"><Users className="h-7 w-7 text-secondary" />Patient Records</h1>
-            <p className="text-muted-foreground">Manage patient records linked to your scans.</p>
-          </div>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90"><Plus className="mr-2 h-4 w-4" />Add Patient</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>New Patient</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>Name</Label><Input value={form.patient_name} onChange={e => setForm(f => ({ ...f, patient_name: e.target.value }))} /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Gender</Label><Input value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))} /></div>
-                  <div><Label>Age</Label><Input type="number" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
-                </div>
-                <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
-                <Button onClick={handleCreate} className="w-full">Save</Button>
+          </DialogTrigger>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader><DialogTitle>New Patient</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div><Label>Name</Label><Input value={form.patient_name} onChange={e => setForm(f => ({ ...f, patient_name: e.target.value }))} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Gender</Label><Input value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))} /></div>
+                <div><Label>Age</Label><Input type="number" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
               </div>
-            </DialogContent>
-          </Dialog>
-        </motion.div>
+              <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+              <Button onClick={handleCreate} className="w-full rounded-full bg-[#2563eb] text-white hover:bg-[#1d4ed8]">Save</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      }
+    >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7">
+        <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
+          <Users className="h-8 w-8 text-[#2563eb]" />Patient Queue &amp; Directory
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">Manage patient profiles linked to Chest X-ray and Chest CT scans.</p>
+      </motion.div>
 
-        <div className="mb-6 relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search patients..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-        </div>
+      <div className="mb-6 relative max-w-md">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Search patients..." value={search} onChange={e => setSearch(e.target.value)} className="rounded-full pl-10" />
+      </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-          {loading ? (
-            <p className="py-12 text-center text-muted-foreground">Loading...</p>
-          ) : filtered.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">No patients yet. Add your first record.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="pb-3 font-medium text-muted-foreground">Name</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Gender</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Age</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Notes</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Added</th>
-                  <th className="pb-3"></th>
+      <div className="clinical-surface p-6">
+        {loading ? (
+          <p className="py-12 text-center text-muted-foreground">Loading...</p>
+        ) : filtered.length === 0 ? (
+          <p className="py-12 text-center text-muted-foreground">No patients yet. Add your first record.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="pb-3 font-medium text-muted-foreground">Name</th>
+                <th className="pb-3 font-medium text-muted-foreground">Gender</th>
+                <th className="pb-3 font-medium text-muted-foreground">Age</th>
+                <th className="pb-3 font-medium text-muted-foreground">Notes</th>
+                <th className="pb-3 font-medium text-muted-foreground">Added</th>
+                <th className="pb-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(p => (
+                <tr
+                  key={p.id}
+                  onClick={() => navigate(`/patients/${p.id}`)}
+                  className="cursor-pointer border-b border-border/50 last:border-0 transition-colors hover:bg-muted/40"
+                >
+                  <td className="py-3.5 text-foreground font-semibold">{p.patient_name}</td>
+                  <td className="py-3.5 text-foreground">{p.gender || "—"}</td>
+                  <td className="py-3.5 text-foreground">{p.age ?? "—"}</td>
+                  <td className="py-3.5 text-muted-foreground max-w-xs truncate">{p.notes || "—"}</td>
+                  <td className="py-3.5 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
+                  <td className="py-3.5 text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-full"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => (
-                  <tr
-                    key={p.id}
-                    onClick={() => navigate(`/patients/${p.id}`)}
-                    className="cursor-pointer border-b border-border/50 last:border-0 hover:bg-muted/50"
-                  >
-                    <td className="py-3 text-foreground font-medium">{p.patient_name}</td>
-                    <td className="py-3 text-foreground">{p.gender || "—"}</td>
-                    <td className="py-3 text-foreground">{p.age ?? "—"}</td>
-                    <td className="py-3 text-muted-foreground max-w-xs truncate">{p.notes || "—"}</td>
-                    <td className="py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
-                    <td className="py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </main>
-    </div>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </ClinicalShell>
   );
 };
 

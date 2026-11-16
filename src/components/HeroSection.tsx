@@ -1,131 +1,199 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Scan, ShieldCheck, Layers, Activity, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import heroBg from "@/assets/hero-bg.jpg";
+import { ArrowRight, Activity, Layers, Eye, ShieldCheck } from "lucide-react";
+import lungsHero from "@/assets/thoracic-lungs-hero.jpg";
+import { useAuth } from "@/hooks/useAuth";
+
+const ORBITAL_NODES = [
+  {
+    id: "xray",
+    icon: Activity,
+    title: "Chest X-Ray",
+    subtitle: "3-Class Pneumonia",
+    detail: "Differentiates Bacterial & Viral Pneumonia from Normal radiographs.",
+    position: "lg:left-[4%] lg:top-[52%]",
+  },
+  {
+    id: "ct",
+    icon: Layers,
+    title: "Chest CT",
+    subtitle: "4-Class Oncology",
+    detail: "Classifies Adenocarcinoma, Large Cell & Squamous Cell vs Normal CT.",
+    position: "lg:left-[23%] lg:top-[48%]",
+  },
+  {
+    id: "gradcam",
+    icon: Eye,
+    title: "Grad-CAM",
+    subtitle: "Visual Localization",
+    detail: "Highlights lobar consolidations on X-ray & parenchymal nodules on CT.",
+    position: "lg:right-[23%] lg:top-[48%]",
+  },
+  {
+    id: "privacy",
+    icon: ShieldCheck,
+    title: "Zero-EXIF",
+    subtitle: "Protected Records",
+    detail: "Strips camera metadata client-side with RLS-secured patient history.",
+    position: "lg:right-[4%] lg:top-[52%]",
+  },
+];
 
 const HeroSection = () => {
+  const { user } = useAuth();
+  const [activeNode, setActiveNode] = useState<string>("ct");
+  const currentNode = ORBITAL_NODES.find((n) => n.id === activeNode) ?? ORBITAL_NODES[1];
+
   return (
-    <section className="relative min-h-screen overflow-hidden bg-hero">
-      {/* Background image overlay */}
-      <div className="absolute inset-0">
-        <img src={heroBg} alt="" className="h-full w-full object-cover opacity-30 mix-blend-overlay" />
-        <div className="absolute inset-0 bg-glow" />
-      </div>
+    <section className="relative bg-background px-3 pt-20 pb-8 sm:px-6">
+      <div className="relative mx-auto min-h-[88vh] max-w-[1440px] overflow-hidden rounded-[36px] border border-white/10 bg-[#07221e] shadow-elevated">
+        {/* Central 3D Translucent Lungs Backdrop (Dentivo Studio Style) */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <img
+            src={lungsHero}
+            alt="3D Translucent Thoracic Lungs"
+            className="h-full w-full object-cover object-center opacity-90 animate-lung-breathe"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#07221e]/80 via-transparent to-[#07221e]/90" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_54%,rgba(114,246,213,0.16),transparent_58%)]" />
+        </div>
 
-      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-center px-6 pb-16 pt-24 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-4xl"
+        {/* Subtle SVG Orbital Arc connecting the 4 glass nodes */}
+        <svg
+          viewBox="0 0 1200 500"
+          fill="none"
+          className="pointer-events-none absolute inset-x-0 top-[34%] hidden w-full opacity-55 lg:block"
         >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-secondary/30 bg-secondary/10 px-4 py-1.5 text-sm text-secondary-foreground/80">
-            <ShieldCheck className="h-4 w-4 text-accent" />
-            <span className="text-accent">Dual-Modality Thoracic AI · Chest X-Ray &amp; Chest CT</span>
-          </div>
+          <path
+            d="M 90 360 Q 600 40 1110 360"
+            stroke="url(#orbitalGrad)"
+            strokeWidth="1.5"
+            strokeDasharray="6 6"
+          />
+          <defs>
+            <linearGradient id="orbitalGrad" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="rgba(114,246,213,0.05)" />
+              <stop offset="50%" stopColor="rgba(114,246,213,0.75)" />
+              <stop offset="100%" stopColor="rgba(114,246,213,0.05)" />
+            </linearGradient>
+          </defs>
+        </svg>
 
-          <h1 className="mb-6 font-display text-5xl font-bold leading-tight tracking-tight text-primary-foreground md:text-7xl">
-            AI-Powered{" "}
-            <span className="text-gradient">Thoracic Imaging</span>{" "}
-            Diagnostics
-          </h1>
-
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-primary-foreground/75">
-            Analyze <span className="font-medium text-primary-foreground">Chest X-rays</span> for 3-class pneumonia differentiation and{" "}
-            <span className="font-medium text-primary-foreground">Chest CT scans</span> for 4-class lung-cancer subtype classification — complete with Grad-CAM visual explainability and clinical PDF reporting.
-          </p>
-
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Button
-              asChild
-              size="lg"
-              className="h-12 gap-2 bg-secondary px-8 text-secondary-foreground shadow-glow hover:bg-secondary/90"
-            >
-              <Link to="/signup">
-                <Scan className="h-5 w-5" />
-                Start Analyzing Scans
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="h-12 border-2 border-primary-foreground/80 bg-primary-foreground/5 px-8 text-base font-medium text-primary-foreground backdrop-blur-sm transition-colors hover:bg-primary-foreground/15 hover:text-primary-foreground"
-            >
-              <a href="#how-it-works">Explore Clinical Workflow</a>
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Dual-Modality Preview Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 35 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.25 }}
-          className="mt-14 grid w-full max-w-4xl gap-4 text-left sm:grid-cols-2"
-        >
-          <div className="rounded-2xl border border-primary-foreground/15 bg-primary-foreground/5 p-5 backdrop-blur-md">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/25 px-3 py-1 text-xs font-semibold text-accent">
-                <Activity className="h-3.5 w-3.5" /> Modality 01 · Chest X-Ray
+        {/* Main Hero Content Container */}
+        <div className="relative z-10 mx-auto flex min-h-[86vh] max-w-7xl flex-col justify-between px-6 py-12 sm:px-10 lg:py-14">
+          {/* Top Centered Editorial Display Headline (Dentivo Typography) */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="mx-auto mt-2 max-w-4xl text-center"
+          >
+            <h1 className="font-display text-4xl font-bold leading-[1.06] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl">
+              Precision Thoracic
+              <span className="block">
+                <span className="text-[#72f6d5]">Clarity</span> in Every Scan
               </span>
-              <span className="font-mono text-xs text-primary-foreground/60">3-Class MobileNetV2</span>
-            </div>
-            <h3 className="font-display text-lg font-bold text-primary-foreground">Pneumonia Differentiation</h3>
-            <p className="mt-1 text-xs leading-relaxed text-primary-foreground/70">
-              Distinguishes bacterial and viral pneumonia infiltrates from healthy lung fields on anterior-posterior and posterior-anterior radiographs.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {["Bacterial Pneumonia", "Viral Pneumonia", "Normal"].map((c) => (
-                <span key={c} className="rounded-md border border-primary-foreground/15 bg-primary-foreground/10 px-2 py-0.5 text-[11px] text-primary-foreground/90">
-                  {c}
-                </span>
-              ))}
-            </div>
+            </h1>
+          </motion.div>
+
+          {/* Center Interactive Orbital Glass Pills (Dentivo 4-node layout) */}
+          <div className="relative my-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:my-0 lg:block lg:h-[260px]">
+            {ORBITAL_NODES.map((node, idx) => {
+              const Icon = node.icon;
+              const isSelected = activeNode === node.id;
+              return (
+                <motion.button
+                  key={node.id}
+                  type="button"
+                  onMouseEnter={() => setActiveNode(node.id)}
+                  onClick={() => setActiveNode(node.id)}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.55, delay: 0.15 + idx * 0.1 }}
+                  className={`glass-pill group flex items-center gap-3.5 rounded-full px-5 py-3.5 text-left transition-all lg:absolute lg:w-[225px] ${
+                    node.position
+                  } ${
+                    isSelected
+                      ? "border-[#72f6d5]/60 bg-white/15 shadow-[0_0_30px_rgba(114,246,213,0.25)] scale-[1.03]"
+                      : "hover:border-white/30 hover:bg-white/10"
+                  }`}
+                >
+                  <span
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform group-hover:scale-105 ${
+                      isSelected
+                        ? "bg-[#72f6d5] text-[#06221e] shadow-[0_0_20px_rgba(114,246,213,0.7)]"
+                        : "bg-[#72f6d5]/80 text-[#06221e]"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold tracking-tight text-white">{node.title}</div>
+                    <div className="text-[11px] leading-snug text-white/75">{node.subtitle}</div>
+                  </div>
+                </motion.button>
+              );
+            })}
           </div>
 
-          <div className="rounded-2xl border border-accent/30 bg-primary-foreground/5 p-5 backdrop-blur-md">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/20 px-3 py-1 text-xs font-semibold text-accent">
-                <Layers className="h-3.5 w-3.5" /> Modality 02 · Chest CT
-              </span>
-              <span className="font-mono text-xs text-primary-foreground/60">4-Class MobileNetV2</span>
-            </div>
-            <h3 className="font-display text-lg font-bold text-primary-foreground">Lung-Cancer Subtype Classification</h3>
-            <p className="mt-1 text-xs leading-relaxed text-primary-foreground/70">
-              Classifies axial thoracic CT slices across major non-small cell carcinoma subtypes vs. normal parenchyma with Grad-CAM nodule localization.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {["Adenocarcinoma", "Large Cell Carcinoma", "Squamous Cell Carcinoma", "Normal"].map((c) => (
-                <span key={c} className="rounded-md border border-primary-foreground/15 bg-primary-foreground/10 px-2 py-0.5 text-[11px] text-primary-foreground/90">
-                  {c}
-                </span>
-              ))}
-            </div>
-          </div>
-        </motion.div>
+          {/* Bottom Split Row: Narrative & Mint CTA (Left) + Live Interactive Node Readout (Right) */}
+          <div className="flex flex-col items-start justify-between gap-8 pt-6 lg:flex-row lg:items-end">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.35 }}
+              className="max-w-sm space-y-5"
+            >
+              <p className="text-base leading-relaxed text-white/85 sm:text-lg">
+                Dual-modality deep learning for <span className="font-semibold text-white">Chest X-ray pneumonia</span> and{" "}
+                <span className="font-semibold text-[#72f6d5]">Chest CT lung-cancer</span> classification — engineered for clinical clarity.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  to={user ? "/dashboard" : "/signup"}
+                  className="inline-flex items-center gap-3 rounded-full bg-[#72f6d5] px-7 py-3.5 text-sm font-bold text-[#06221e] shadow-[0_0_28px_rgba(114,246,213,0.45)] transition-all hover:scale-[1.02] hover:bg-[#89f9dd]"
+                >
+                  {user ? "Launch Workstation" : "Analyze Your First Scan"}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </motion.div>
 
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.45 }}
-          className="mt-12 grid w-full max-w-3xl grid-cols-2 gap-6 sm:grid-cols-4"
-        >
-          {[
-            { value: "2 Modalities", label: "Chest X-Ray & CT" },
-            { value: "7 Classes", label: "Pneumonia & Oncology" },
-            { value: "Grad-CAM", label: "Visual Explainability" },
-            { value: "<3s", label: "Real-Time Inference" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className="font-display text-2xl font-bold text-accent md:text-3xl">{stat.value}</div>
-              <div className="mt-1 text-xs text-primary-foreground/60">{stat.label}</div>
-            </div>
-          ))}
-        </motion.div>
+            {/* Bottom-Right Floating Glass Readout Card */}
+            <motion.div
+              key={currentNode.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="glass-pill w-full max-w-md rounded-3xl p-5 text-left"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#72f6d5]">
+                  <span className="h-2 w-2 rounded-full bg-[#72f6d5]" />
+                  {currentNode.title} · {currentNode.subtitle}
+                </span>
+                <span className="font-mono text-[11px] text-white/60">MobileNetV2 · 224×224</span>
+              </div>
+              <p className="text-xs leading-relaxed text-white/80">{currentNode.detail}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {currentNode.id === "xray" ? (
+                  ["Bacterial Pneumonia", "Viral Pneumonia", "Normal"].map((c) => (
+                    <span key={c} className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/90">
+                      {c}
+                    </span>
+                  ))
+                ) : (
+                  ["Adenocarcinoma", "Large Cell Carcinoma", "Squamous Cell Carcinoma", "Normal"].map((c) => (
+                    <span key={c} className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/90">
+                      {c}
+                    </span>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );

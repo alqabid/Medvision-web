@@ -1,24 +1,23 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X,
-  History, Settings, User, Users, BarChart3, Download, Database, ScrollText,
-  Share2, MessageCircle, Mail, Link2, UserPlus, Info, Stethoscope, Layers,
-  Activity, Sliders, Columns,
+  Upload, FileImage, AlertTriangle, CheckCircle2, Loader2, X,
+  History, Download, Share2, MessageCircle, Mail, Link2, UserPlus,
+  Info, Stethoscope, Layers, Activity, Sliders, Columns, Sparkles,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import ThemeToggle from "@/components/ThemeToggle";
+import ClinicalShell from "@/components/ClinicalShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateReport, type ScanModality } from "@/lib/report";
 import { stripImageMetadata } from "@/lib/stripImageMetadata";
+import lungsClinical from "@/assets/thoracic-lungs-clinical.jpg";
 
 interface AnalysisResult {
   modality: ScanModality;
@@ -65,38 +64,6 @@ const getResultStyle = (prediction: string) => {
 };
 
 const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest CT" : "Chest X-ray");
-
-const MODALITY_PROFILES: Record<
-  ScanModality,
-  {
-    title: string;
-    subtitle: string;
-    architecture: string;
-    classes: Array<{ name: string; detail: string }>;
-  }
-> = {
-  xray: {
-    title: "Chest X-ray · 3-Class Pneumonia Classifier",
-    subtitle: "Evaluates AP/PA chest radiographs for lobar consolidation and interstitial infiltrates.",
-    architecture: "MobileNetV2 (3-class · 224×224 RGB · Grad-CAM out_relu)",
-    classes: [
-      { name: "Bacterial", detail: "Focal lobar consolidation / air bronchograms" },
-      { name: "Viral", detail: "Diffuse bilateral interstitial / perihilar pattern" },
-      { name: "Normal", detail: "Clear lung fields & sharp costophrenic angles" },
-    ],
-  },
-  ct: {
-    title: "Chest CT · 4-Class Lung-Cancer Subtype Classifier",
-    subtitle: "Evaluates axial thoracic CT slices for non-small cell carcinoma patterns vs. normal parenchyma.",
-    architecture: "MobileNetV2 (4-class · 224×224 RGB · Grad-CAM out_relu)",
-    classes: [
-      { name: "Adenocarcinoma", detail: "Often peripheral nodules or ground-glass/solid masses" },
-      { name: "Large Cell Carcinoma", detail: "Typically large peripheral masses with rapid growth" },
-      { name: "Squamous Cell Carcinoma", detail: "Frequently central/hilar masses, may cavitate" },
-      { name: "Normal", detail: "Unremarkable lung parenchyma & mediastinal contours" },
-    ],
-  },
-};
 
 const CLINICAL_GUIDANCE: Record<string, { summary: string; nextSteps: string[] }> = {
   Normal: {
@@ -150,8 +117,7 @@ const CLINICAL_GUIDANCE: Record<string, { summary: string; nextSteps: string[] }
 };
 
 const Dashboard = () => {
-  const { user, userRole, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [modality, setModality] = useState<ScanModality>("xray");
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -168,16 +134,16 @@ const Dashboard = () => {
   const [newPatient, setNewPatient] = useState<PatientDraft>(emptyPatient);
   const [activePatient, setActivePatient] = useState<PatientRow | null>(null);
 
-  // Interactive Grad-CAM viewer mode: side-by-side vs overlay blend
+  // Interactive Grad-CAM viewer mode
   const [heatmapView, setHeatmapView] = useState<"split" | "blend">("split");
   const [blendOpacity, setBlendOpacity] = useState<number>(65);
-
-  // Backend health status per modality
   const [backendModalities, setBackendModalities] = useState<{ xray: boolean; ct: boolean } | null>(null);
 
   const scanLabel = formatModalityLabel(modality);
   const scanShortLabel = modality === "ct" ? "CT scan" : "X-ray";
-  const modalityProfile = MODALITY_PROFILES[modality];
+  const currentPatientPreview =
+    activePatient ||
+    (patientMode === "existing" ? patients.find((p) => p.id === selectedPatientId) ?? null : null);
 
   useEffect(() => {
     fetchHistory();
@@ -199,7 +165,7 @@ const Dashboard = () => {
         });
       }
     } catch {
-      // ignore offline health check on initial load
+      // ignore offline health check
     }
   };
 
@@ -218,7 +184,13 @@ const Dashboard = () => {
   const fetchPatients = async () => {
     if (!user) return;
     const { data } = await supabase.from("patients").select("id, patient_name, age, gender, notes").order("created_at", { ascending: false });
-    if (data) setPatients(data as PatientRow[]);
+    if (data) {
+      const list = data as PatientRow[];
+      setPatients(list);
+      if (!selectedPatientId && list.length > 0) {
+        setSelectedPatientId(list[0].id);
+      }
+    }
   };
 
   const handleModalityChange = (next: ScanModality) => {
@@ -277,10 +249,8 @@ const Dashboard = () => {
     setIsAnalyzing(true);
 
     try {
-      // Strip any camera/EXIF metadata before uploading
       const cleanFile = await stripImageMetadata(selectedFile);
 
-      // Upload image to storage
       const filePath = `${user.id}/${Date.now()}-${selectedFile.name}`;
       const { error: uploadError } = await supabase.storage
         .from("xray-images")
@@ -350,8 +320,6 @@ const Dashboard = () => {
 
   const clearSelection = () => { setSelectedFile(null); setPreview(null); setResult(null); };
 
-  const handleSignOut = async () => { await signOut(); navigate("/"); };
-
   const buildShareText = () => {
     if (!result || !activePatient) return "";
     const resultScanLabel = formatModalityLabel(result.modality);
@@ -401,318 +369,537 @@ Model: ${result.modelUsed}
     toast.success("Report summary copied");
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-secondary" />
-            <span className="font-display text-lg font-bold text-foreground">MedVision</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant={showHistory ? "default" : "ghost"} size="sm" onClick={() => setShowHistory(!showHistory)} className={showHistory ? "bg-secondary text-secondary-foreground" : ""}>
-              <History className="mr-2 h-4 w-4" />History
-            </Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/patients"><Users className="mr-2 h-4 w-4" />Patients</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/records"><Database className="mr-2 h-4 w-4" />Records</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/audit"><ScrollText className="mr-2 h-4 w-4" />Audit</Link></Button>
-            {userRole === "admin" && (
-              <Button variant="ghost" size="sm" asChild><Link to="/admin"><Settings className="mr-2 h-4 w-4" />Admin</Link></Button>
-            )}
-            <Button variant="ghost" size="sm" asChild><Link to="/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link></Button>
-            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div className="hidden leading-tight sm:block">
-                <div className="text-foreground">{profile?.full_name || user?.email}</div>
-                {profile?.hospital && (
-                  <div className="text-xs text-muted-foreground">{profile.hospital}</div>
-                )}
-              </div>
-              <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-xs capitalize text-secondary">{userRole?.replace("_", " ") || "user"}</span>
-            </div>
-            <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut className="mr-2 h-4 w-4" />Sign Out</Button>
-          </div>
-        </div>
-      </header>
+  const ringPercentage = result ? Math.round(result.confidence) : modality === "ct" ? 4 : 3;
+  const ringStrokeDash = `${(result ? result.confidence : 75) * 1.63} 163`;
 
-      <main className="mx-auto max-w-7xl px-6 py-10">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-wrap items-end justify-between gap-4">
+  return (
+    <ClinicalShell
+      practitionerName={profile?.full_name}
+      hospitalName={profile?.hospital}
+      headerRight={
+        <Button
+          variant={showHistory ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowHistory(!showHistory)}
+          className={`rounded-full px-4 ${showHistory ? "bg-[#2563eb] text-white hover:bg-[#1d4ed8]" : ""}`}
+        >
+          <History className="mr-1.5 h-3.5 w-3.5" />
+          History ({history.length})
+        </Button>
+      }
+    >
+      {/* ProHealth-Inspired Top Overview Row with Circular Ring Gauge */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-7 flex flex-wrap items-center justify-between gap-6"
+      >
+        <div className="flex items-center gap-6">
           <div>
-            <h1 className="mb-2 font-display text-3xl font-bold text-foreground">Scan Analysis</h1>
-            <p className="text-muted-foreground">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+              Scan Analysis
+            </h1>
+            <p className="mt-1 max-w-xl text-sm text-muted-foreground">
               {modality === "ct"
                 ? "Register the patient, upload their chest CT scan, and get a 4-class lung-cancer subtype AI classification with Grad-CAM explainability."
                 : "Register the patient, upload their chest X-ray, and get a 3-class pneumonia AI diagnosis with Grad-CAM explainability."}
             </p>
           </div>
-          {backendModalities && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm">
-              <span className="font-medium text-muted-foreground">Inference Engine:</span>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${backendModalities.xray ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${backendModalities.xray ? "bg-success" : "bg-warning"}`} />
-                X-ray {backendModalities.xray ? "Ready" : "Offline"}
-              </span>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${backendModalities.ct ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${backendModalities.ct ? "bg-success" : "bg-warning"}`} />
-                CT {backendModalities.ct ? "Ready" : "Not Deployed"}
-              </span>
+
+          {/* Circular Gauge Widget (ProHealth style) */}
+          <div className="hidden items-center gap-3 rounded-full border border-border/70 bg-card px-4 py-2 shadow-card xl:flex">
+            <div className="relative h-14 w-14">
+              <svg className="h-14 w-14 -rotate-90" viewBox="0 0 64 64">
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="26"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                  className="text-muted"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="26"
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={ringStrokeDash}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center font-display text-xs font-bold text-foreground">
+                {result ? `${ringPercentage}%` : `${ringPercentage}C`}
+              </div>
+            </div>
+            <div className="pr-2 text-xs">
+              <div className="font-bold text-foreground">
+                {result ? "Model Confidence" : `${scanLabel} Mode`}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {result ? result.prediction : `${ringPercentage}-class MobileNetV2`}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Engine Readiness Status Pill */}
+        {backendModalities && (
+          <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2 text-xs shadow-card">
+            <span className="font-medium text-muted-foreground">Engine:</span>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-semibold ${backendModalities.xray ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${backendModalities.xray ? "bg-success" : "bg-warning"}`} />
+              X-ray {backendModalities.xray ? "Ready" : "Offline"}
+            </span>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-semibold ${backendModalities.ct ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${backendModalities.ct ? "bg-success" : "bg-warning"}`} />
+              CT {backendModalities.ct ? "Ready" : "Not Deployed"}
+            </span>
+          </div>
+        )}
+      </motion.div>
+
+      {showHistory ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="clinical-surface p-7"
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-display text-xl font-bold text-card-foreground">Case History</h2>
+            <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)} className="rounded-full">
+              Back to Workstation
+            </Button>
+          </div>
+          {history.length === 0 ? (
+            <p className="py-12 text-center text-muted-foreground">No analyses yet. Upload a chest X-ray or CT scan to get started.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="pb-3 font-medium text-muted-foreground">Date</th>
+                    <th className="pb-3 font-medium text-muted-foreground">Scan Type</th>
+                    <th className="pb-3 font-medium text-muted-foreground">File</th>
+                    <th className="pb-3 font-medium text-muted-foreground">Result</th>
+                    <th className="pb-3 font-medium text-muted-foreground">Confidence</th>
+                    <th className="pb-3 font-medium text-muted-foreground">Model</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((record) => {
+                    const s = getResultStyle(record.prediction);
+                    const Icon = s.icon;
+                    const isCt = record.modality === "ct";
+                    return (
+                      <tr key={record.id} className="border-b border-border/50 last:border-0">
+                        <td className="py-3.5 text-foreground">{new Date(record.created_at).toLocaleDateString()}</td>
+                        <td className="py-3.5">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                            }`}
+                          >
+                            {formatModalityLabel(record.modality)}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-foreground">{record.original_filename}</td>
+                        <td className="py-3.5">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.boxClass} ${s.iconClass}`}>
+                            <Icon className="h-3 w-3" />{record.prediction}
+                          </span>
+                        </td>
+                        <td className="py-3.5 font-mono text-foreground">{Number(record.confidence).toFixed(1)}%</td>
+                        <td className="py-3.5 text-muted-foreground">{record.model_used}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </motion.div>
-
-        {showHistory ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
-            <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Case History</h2>
-            {history.length === 0 ? (
-              <p className="py-12 text-center text-muted-foreground">No analyses yet. Upload a chest X-ray or CT scan to get started.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="pb-3 font-medium text-muted-foreground">Date</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Scan Type</th>
-                      <th className="pb-3 font-medium text-muted-foreground">File</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Result</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Confidence</th>
-                      <th className="pb-3 font-medium text-muted-foreground">Model</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((record) => {
-                      const s = getResultStyle(record.prediction);
-                      const Icon = s.icon;
-                      const isCt = record.modality === "ct";
-                      return (
-                        <tr key={record.id} className="border-b border-border/50 last:border-0">
-                          <td className="py-3 text-foreground">{new Date(record.created_at).toLocaleDateString()}</td>
-                          <td className="py-3">
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
-                              }`}
-                            >
-                              {formatModalityLabel(record.modality)}
-                            </span>
-                          </td>
-                          <td className="py-3 text-foreground">{record.original_filename}</td>
-                          <td className="py-3">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${s.boxClass} ${s.iconClass}`}>
-                              <Icon className="h-3 w-3" />{record.prediction}
-                            </span>
-                          </td>
-                          <td className="py-3 text-foreground">{Number(record.confidence).toFixed(1)}%</td>
-                          <td className="py-3 text-muted-foreground">{record.model_used}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </motion.div>
-        ) : (
-          <div className="grid gap-8 lg:grid-cols-2">
-            {/* Left column: patient + upload */}
-            <div className="space-y-6">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="font-display text-lg font-semibold text-card-foreground">Patient Details</h2>
-                  <div className="flex gap-1 rounded-lg bg-muted p-1 text-xs">
-                    <button
-                      onClick={() => setPatientMode("existing")}
-                      className={`rounded-md px-3 py-1 font-medium transition-colors ${patientMode === "existing" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
-                    >
-                      Existing
-                    </button>
-                    <button
-                      onClick={() => setPatientMode("new")}
-                      className={`rounded-md px-3 py-1 font-medium transition-colors ${patientMode === "new" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
-                    >
-                      <UserPlus className="mr-1 inline h-3 w-3" />New
-                    </button>
-                  </div>
-                </div>
-
-                {patientMode === "existing" ? (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Select patient for this scan</Label>
-                    <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
-                      <SelectTrigger><SelectValue placeholder={patients.length ? "Choose a patient…" : "No patients yet — add one"} /></SelectTrigger>
-                      <SelectContent>
-                        {patients.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.patient_name}{p.age ? ` · ${p.age}${p.gender ? " " + p.gender : ""}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!patients.length && (
-                      <p className="text-xs text-muted-foreground">Switch to <span className="font-medium">New</span> to register the patient inline.</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
-                      <Label className="text-xs text-muted-foreground">Full name *</Label>
-                      <Input value={newPatient.patient_name} onChange={(e) => setNewPatient({ ...newPatient, patient_name: e.target.value })} placeholder="e.g. Jane Doe" maxLength={120} />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Age</Label>
-                      <Input type="number" min={0} max={150} value={newPatient.age} onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })} placeholder="e.g. 34" />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Gender</Label>
-                      <Select value={newPatient.gender} onValueChange={(v) => setNewPatient({ ...newPatient, gender: v })}>
-                        <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Female">Female</SelectItem>
-                          <SelectItem value="Male">Male</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Label className="text-xs text-muted-foreground">Clinical notes</Label>
-                      <Textarea rows={2} value={newPatient.notes} onChange={(e) => setNewPatient({ ...newPatient, notes: e.target.value })} placeholder="Symptoms, referring physician, prior conditions…" maxLength={1000} />
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="font-display text-lg font-semibold text-card-foreground">Upload Scan</h2>
-                  <div role="group" aria-label="Scan type selector" className="inline-flex rounded-lg bg-muted p-1 text-xs">
-                    <button
-                      type="button"
-                      disabled={isAnalyzing}
-                      onClick={() => handleModalityChange("xray")}
-                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                        modality === "xray" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Activity className="h-3.5 w-3.5 text-secondary" />
-                      Chest X-ray
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isAnalyzing}
-                      onClick={() => handleModalityChange("ct")}
-                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                        modality === "ct" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Layers className="h-3.5 w-3.5 text-info" />
-                      Chest CT
-                    </button>
-                  </div>
-                </div>
-
-                {/* Modality Diagnostic Scope & Target Classes Panel */}
-                <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3.5 text-xs">
-                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold text-foreground">{modalityProfile.title}</span>
-                    <span className="font-mono text-[11px] text-muted-foreground">{modalityProfile.architecture}</span>
-                  </div>
-                  <p className="mb-2.5 text-muted-foreground">{modalityProfile.subtitle}</p>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
-                    {modalityProfile.classes.map((cls) => (
-                      <div key={cls.name} className="rounded border border-border/60 bg-card/70 px-2.5 py-1.5">
-                        <span className="font-medium text-foreground">{cls.name}</span>
-                        <p className="text-[11px] text-muted-foreground">{cls.detail}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {modality === "ct" && (
-                  <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-foreground">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
-                    <p>
-                      The CT model classifies lung-cancer subtypes (Adenocarcinoma, Large Cell, Squamous Cell) vs Normal. It does not detect pneumonia on CT.
-                    </p>
-                  </div>
-                )}
-
-                {!preview ? (
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={handleDrop}
-                    className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center transition-colors ${dragOver ? "border-secondary bg-secondary/5" : "border-border"}`}
+      ) : (
+        <div className="grid gap-7 lg:grid-cols-12">
+          {/* LEFT COLUMN (5 cols): ProHealth 3D Anatomical Lungs & Upload Stage */}
+          <div className="space-y-6 lg:col-span-5">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="clinical-surface p-6"
+            >
+              {/* Top of Upload Card: Scan-Type Segmented Control */}
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-display text-lg font-bold text-card-foreground">Upload Scan</h2>
+                <div role="group" aria-label="Scan type selector" className="inline-flex rounded-full bg-muted p-1 text-xs">
+                  <button
+                    type="button"
+                    disabled={isAnalyzing}
+                    onClick={() => handleModalityChange("xray")}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                      modality === "xray"
+                        ? "bg-[#2563eb] text-white shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
-                    <Upload className={`mb-4 h-10 w-10 ${dragOver ? "text-secondary" : "text-muted-foreground"}`} />
-                    <p className="mb-2 text-sm font-medium text-foreground">Drag & drop your {scanLabel.toLowerCase()} image</p>
-                    <p className="mb-4 text-xs text-muted-foreground">PNG, JPG up to 10MB · EXIF metadata stripped client-side</p>
+                    <Activity className="h-3.5 w-3.5" />
+                    Chest X-ray
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isAnalyzing}
+                    onClick={() => handleModalityChange("ct")}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                      modality === "ct"
+                        ? "bg-[#2563eb] text-white shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Chest CT
+                  </button>
+                </div>
+              </div>
+
+              {/* Required CT Clinical Scope Notice */}
+              {modality === "ct" && (
+                <div className="mb-4 flex items-start gap-2.5 rounded-2xl border border-info/30 bg-info/10 p-3.5 text-xs text-foreground">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                  <p>
+                    The CT model classifies lung-cancer subtypes (Adenocarcinoma, Large Cell, Squamous Cell) vs Normal. It does not detect pneumonia on CT.
+                  </p>
+                </div>
+              )}
+
+              {/* Interactive Anatomical Lungs / Scan Preview Stage */}
+              {!preview ? (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  className={`relative overflow-hidden rounded-[24px] border-2 border-dashed p-6 text-center transition-all ${
+                    dragOver
+                      ? "border-[#2563eb] bg-[#2563eb]/5"
+                      : "border-border/80 bg-[#f5f8fc] dark:bg-muted/25"
+                  }`}
+                >
+                  {/* ProHealth Vertical Calibration Ruler on Left */}
+                  <div className="pointer-events-none absolute left-3.5 top-1/2 hidden -translate-y-1/2 flex-col items-start gap-2 font-mono text-[10px] text-muted-foreground/60 sm:flex">
+                    <span>100% —</span>
+                    <span>87% ━━</span>
+                    <span>50% —</span>
+                    <span>25% —</span>
+                  </div>
+
+                  {/* Floating Glass Callout Badge (ProHealth style) */}
+                  <div className="pointer-events-none absolute right-3.5 top-3.5 rounded-2xl border border-white/80 bg-white/90 px-3 py-1.5 text-left text-[11px] shadow-sm backdrop-blur-md dark:border-border dark:bg-card/90">
+                    <div className="flex items-center gap-1.5 font-bold text-foreground">
+                      <span className="h-2 w-2 rounded-full bg-[#2563eb]" />
+                      {modality === "ct" ? "4-Class NSCLC CT" : "3-Class X-Ray"}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">224×224 RGB · [0, 1]</div>
+                  </div>
+
+                  <img
+                    src={lungsClinical}
+                    alt="3D Thoracic Lungs Reference"
+                    className="mx-auto mb-3 h-52 w-auto object-contain animate-lung-breathe"
+                  />
+
+                  <div className="mx-auto max-w-xs">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#2563eb]/10 text-[#2563eb]">
+                      <Upload className="h-5 w-5" />
+                    </div>
+                    <p className="mb-1 text-sm font-bold text-foreground">
+                      Drag &amp; drop your {scanLabel.toLowerCase()} image
+                    </p>
+                    <p className="mb-4 text-xs text-muted-foreground">
+                      PNG, JPG up to 10MB · EXIF metadata stripped automatically
+                    </p>
                     <label>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-                      <span className="cursor-pointer rounded-lg bg-secondary/10 px-4 py-2 text-sm font-medium text-secondary transition-colors hover:bg-secondary/20">Browse Files</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                      />
+                      <span className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#2563eb] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-transform hover:scale-[1.02] hover:bg-[#1d4ed8]">
+                        Browse Files
+                      </span>
                     </label>
                   </div>
-                ) : (
-                  <div className="relative">
-                    <button onClick={clearSelection} className="absolute -right-2 -top-2 z-10 rounded-full bg-destructive p-1 text-destructive-foreground shadow-md">
-                      <X className="h-4 w-4" />
-                    </button>
-                    <div className="overflow-hidden rounded-lg border border-border">
-                      <img src={preview} alt={`Uploaded ${scanLabel}`} className="h-64 w-full object-contain bg-foreground/5" />
-                    </div>
-                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileImage className="h-4 w-4" />
-                      <span className="truncate">{selectedFile?.name}</span>
-                    </div>
-                    <Button onClick={handleAnalyze} disabled={isAnalyzing} className="mt-4 w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                      {isAnalyzing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</>) : `Analyze ${scanLabel}`}
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
-            </div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <button
+                    onClick={clearSelection}
+                    title="Clear scan"
+                    className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-card/90 text-foreground shadow-md backdrop-blur-md transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
 
-            {/* Right column: results */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
+                  <div className="relative overflow-hidden rounded-[24px] border border-border bg-foreground/5">
+                    <img
+                      src={preview}
+                      alt={`Uploaded ${scanLabel}`}
+                      className="h-72 w-full object-contain"
+                    />
+                    {isAnalyzing && (
+                      <div className="pointer-events-none absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#72f6d5] to-transparent shadow-[0_0_20px_#72f6d5] animate-scan-sweep" />
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between rounded-2xl bg-muted/50 px-3.5 py-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 truncate">
+                      <FileImage className="h-4 w-4 shrink-0 text-[#2563eb]" />
+                      <span className="truncate font-medium text-foreground">{selectedFile?.name}</span>
+                    </div>
+                    <span className="ml-2 shrink-0 rounded-full bg-card px-2.5 py-0.5 font-semibold text-foreground">
+                      {scanLabel}
+                    </span>
+                  </div>
+
+                  <Button
+                    onClick={handleAnalyze}
+                    disabled={isAnalyzing}
+                    className="mt-4 h-12 w-full rounded-full bg-[#2563eb] text-sm font-bold text-white shadow-md shadow-[#2563eb]/20 hover:bg-[#1d4ed8]"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      `Analyze ${scanLabel}`
+                    )}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+
+          {/* RIGHT COLUMN (7 cols): Medikals Patient Info Card + ProHealth Diagnostic Results */}
+          <div className="space-y-6 lg:col-span-7">
+            {/* Medikals-Inspired Split Patient Info + Modality Target Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="clinical-surface p-6"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="font-display text-lg font-bold text-card-foreground">Patient Info</h2>
+                <div className="flex gap-1 rounded-full bg-muted p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPatientMode("existing")}
+                    className={`rounded-full px-3.5 py-1 font-semibold transition-all ${
+                      patientMode === "existing"
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Existing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPatientMode("new")}
+                    className={`rounded-full px-3.5 py-1 font-semibold transition-all ${
+                      patientMode === "new"
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <UserPlus className="mr-1 inline h-3 w-3" />
+                    New
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-12">
+                {/* Medikals Royal-Blue Patient Card */}
+                <div className="flex flex-col justify-between rounded-[22px] bg-[#2563eb] p-5 text-white shadow-md md:col-span-7">
+                  <div>
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-white/20 px-3 py-0.5 text-xs font-semibold">
+                        {currentPatientPreview?.age ? `${currentPatientPreview.age} yrs` : "Age —"}
+                      </span>
+                      <span className="rounded-full bg-white/20 px-3 py-0.5 text-xs font-semibold">
+                        {currentPatientPreview?.gender || "Gender —"}
+                      </span>
+                      <span className="rounded-full bg-white/20 px-3 py-0.5 text-xs font-semibold">
+                        {scanLabel}
+                      </span>
+                    </div>
+
+                    {patientMode === "existing" ? (
+                      <div className="space-y-2">
+                        <div className="font-display text-xl font-bold leading-tight">
+                          {currentPatientPreview?.patient_name || "Select a Patient"}
+                        </div>
+                        <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
+                          <SelectTrigger className="mt-2 border-white/25 bg-white/15 text-white placeholder:text-white/70">
+                            <SelectValue placeholder={patients.length ? "Choose a patient…" : "No patients yet — add one"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {patients.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.patient_name}{p.age ? ` · ${p.age}${p.gender ? " " + p.gender : ""}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!patients.length && (
+                          <p className="text-[11px] text-white/80">
+                            Switch to <span className="font-bold underline">New</span> to register a patient inline.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid gap-2.5 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                          <Input
+                            value={newPatient.patient_name}
+                            onChange={(e) => setNewPatient({ ...newPatient, patient_name: e.target.value })}
+                            placeholder="Patient full name *"
+                            maxLength={120}
+                            className="border-white/25 bg-white/15 text-white placeholder:text-white/70"
+                          />
+                        </div>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={150}
+                          value={newPatient.age}
+                          onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                          placeholder="Age"
+                          className="border-white/25 bg-white/15 text-white placeholder:text-white/70"
+                        />
+                        <Select value={newPatient.gender} onValueChange={(v) => setNewPatient({ ...newPatient, gender: v })}>
+                          <SelectTrigger className="border-white/25 bg-white/15 text-white">
+                            <SelectValue placeholder="Gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Female">Female</SelectItem>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="sm:col-span-2">
+                          <Textarea
+                            rows={2}
+                            value={newPatient.notes}
+                            onChange={(e) => setNewPatient({ ...newPatient, notes: e.target.value })}
+                            placeholder="Clinical notes, symptoms, referring physician…"
+                            maxLength={1000}
+                            className="border-white/25 bg-white/15 text-white placeholder:text-white/70"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Medikals Right Diagnosis / Protocol Summary Tile */}
+                <div className="flex flex-col justify-between rounded-[22px] bg-muted/50 p-5 md:col-span-5">
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Active Protocol :</span>
+                    <h3 className="mt-1 font-display text-base font-bold text-foreground">
+                      {modality === "ct" ? "Lung-Cancer CT (4-Class)" : "Pneumonia X-Ray (3-Class)"}
+                    </h3>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {(modality === "ct"
+                        ? ["Adenocarcinoma", "Large Cell", "Squamous Cell", "Normal"]
+                        : ["Bacterial", "Viral", "Normal"]
+                      ).map((c) => (
+                        <span
+                          key={c}
+                          className="rounded-full border border-border/80 bg-card px-2.5 py-0.5 text-[11px] font-medium text-foreground"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-4 border-t border-border/60 pt-2.5 text-[11px] text-muted-foreground">
+                    Grad-CAM Layer: <span className="font-mono font-semibold text-foreground">out_relu</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Analysis Results Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="clinical-surface p-6"
+            >
               <div className="mb-4 flex items-center justify-between gap-2">
-                <h2 className="font-display text-lg font-semibold text-card-foreground">Analysis Results</h2>
+                <h2 className="font-display text-lg font-bold text-card-foreground">Analysis Results</h2>
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                     (result?.modality ?? modality) === "ct"
                       ? "bg-info/10 text-info"
                       : "bg-secondary/10 text-secondary"
                   }`}
                 >
-                  {(result?.modality ?? modality) === "ct" ? <Layers className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+                  {(result?.modality ?? modality) === "ct" ? <Layers className="h-3.5 w-3.5" /> : <Activity className="h-3.5 w-3.5" />}
                   {formatModalityLabel(result?.modality ?? modality)}
                 </span>
               </div>
+
               <AnimatePresence mode="wait">
                 {isAnalyzing ? (
-                  <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center py-16">
-                    <Loader2 className="mb-4 h-12 w-12 animate-spin text-secondary" />
-                    <p className="mb-2 font-medium text-foreground">Processing {scanLabel}</p>
-                    <p className="mb-4 text-sm text-muted-foreground">
-                      Running {modality === "ct" ? "4-class CT" : "3-class X-ray"} inference & Grad-CAM…
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col items-center justify-center py-16"
+                  >
+                    <Loader2 className="mb-4 h-12 w-12 animate-spin text-[#2563eb]" />
+                    <p className="mb-1 font-display text-base font-bold text-foreground">
+                      Processing {scanLabel}
+                    </p>
+                    <p className="mb-4 text-xs text-muted-foreground">
+                      Running {modality === "ct" ? "4-class CT" : "3-class X-ray"} inference &amp; Grad-CAM…
                     </p>
                     <Progress value={66} className="w-48" />
                   </motion.div>
                 ) : result ? (
-                  <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
+                  <motion.div
+                    key="result"
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="space-y-6"
+                  >
                     {activePatient && (
-                      <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Report for</p>
-                        <p className="font-medium text-foreground">{activePatient.patient_name}
-                          {activePatient.age ? <span className="text-muted-foreground"> · {activePatient.age}{activePatient.gender ? ` ${activePatient.gender}` : ""}</span> : null}
-                        </p>
+                      <div className="flex items-center justify-between rounded-2xl bg-muted/40 px-4 py-3 text-sm">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Report for</p>
+                          <p className="font-bold text-foreground">
+                            {activePatient.patient_name}
+                            {activePatient.age ? (
+                              <span className="font-normal text-muted-foreground">
+                                {" "}· {activePatient.age}{activePatient.gender ? ` ${activePatient.gender}` : ""}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <span className="font-mono text-xs text-muted-foreground">{result.timestamp}</span>
                       </div>
                     )}
 
+                    {/* Result Banner: Normal green, Invalid amber, every other class red */}
                     {(() => {
                       const style = getResultStyle(result.prediction);
                       const StyleIcon = style.icon;
                       return (
-                        <div className={`flex items-center gap-4 rounded-lg border p-4 ${style.boxClass}`}>
+                        <div className={`flex items-center gap-4 rounded-2xl border p-4 ${style.boxClass}`}>
                           <StyleIcon className={`h-8 w-8 shrink-0 ${style.iconClass}`} />
                           <div>
                             <p className="font-display text-xl font-bold text-foreground">{result.prediction}</p>
@@ -722,46 +909,28 @@ Model: ${result.modelUsed}
                       );
                     })()}
 
-                    {/* Clinical Interpretation & Next Steps Card */}
-                    {CLINICAL_GUIDANCE[result.prediction] && (
-                      <div className="rounded-lg border border-border bg-muted/30 p-3.5 text-xs">
-                        <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground">
-                          <Stethoscope className="h-3.5 w-3.5 text-secondary" />
-                          Clinical Interpretation &amp; Suggested Workup
-                        </p>
-                        <p className="mb-2 text-muted-foreground">
-                          {CLINICAL_GUIDANCE[result.prediction].summary}
-                        </p>
-                        <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                          {CLINICAL_GUIDANCE[result.prediction].nextSteps.map((step, idx) => (
-                            <li key={idx}>{step}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
                     {result.prediction !== "Invalid" && (
                       <div>
                         <div className="mb-2 flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Confidence Score</span>
-                          <span className="font-display font-semibold text-foreground">{result.confidence}%</span>
+                          <span className="font-display text-lg font-bold text-foreground">{result.confidence}%</span>
                         </div>
                         <Progress value={result.confidence} className="h-3" />
                       </div>
                     )}
 
                     {result.prediction !== "Invalid" && result.classProbabilities && (
-                      <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-                        <p className="mb-2 text-sm font-medium text-foreground">
+                      <div className="space-y-2.5 rounded-2xl bg-muted/40 p-4">
+                        <p className="mb-1 text-sm font-bold text-foreground">
                           Class Breakdown ({Object.keys(result.classProbabilities).length}-class)
                         </p>
                         {Object.entries(result.classProbabilities).map(([className, prob]) => (
                           <div key={className} className="space-y-1">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">{className}</span>
-                              <span className="text-foreground">{Number(prob).toFixed(1)}%</span>
+                              <span className="font-medium text-muted-foreground">{className}</span>
+                              <span className="font-mono font-semibold text-foreground">{Number(prob).toFixed(1)}%</span>
                             </div>
-                            <Progress value={prob} className="h-1.5" />
+                            <Progress value={prob} className="h-2" />
                           </div>
                         ))}
                       </div>
@@ -769,16 +938,18 @@ Model: ${result.modelUsed}
 
                     {result.prediction !== "Invalid" && result.heatmapDataUrl && (
                       <div>
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <p className="text-sm font-medium text-foreground">Grad-CAM Heatmap</p>
-                            <p className="text-xs text-muted-foreground">Highlighted regions show what most influenced the model's prediction.</p>
+                            <p className="text-sm font-bold text-foreground">Grad-CAM Heatmap</p>
+                            <p className="text-xs text-muted-foreground">
+                              Highlighted regions show what most influenced the model's prediction.
+                            </p>
                           </div>
-                          <div className="inline-flex rounded-lg bg-muted p-0.5 text-xs">
+                          <div className="inline-flex rounded-full bg-muted p-1 text-xs">
                             <button
                               type="button"
                               onClick={() => setHeatmapView("split")}
-                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
+                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-semibold transition-all ${
                                 heatmapView === "split" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                               }`}
                             >
@@ -787,7 +958,7 @@ Model: ${result.modelUsed}
                             <button
                               type="button"
                               onClick={() => setHeatmapView("blend")}
-                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
+                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-semibold transition-all ${
                                 heatmapView === "blend" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                               }`}
                             >
@@ -797,19 +968,27 @@ Model: ${result.modelUsed}
                         </div>
 
                         {heatmapView === "split" ? (
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <img src={preview ?? ""} alt={`Original ${formatModalityLabel(result.modality)}`} className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
+                              <img
+                                src={preview ?? ""}
+                                alt={`Original ${formatModalityLabel(result.modality)}`}
+                                className="w-full rounded-2xl border border-border object-contain bg-foreground/5"
+                              />
                               <p className="mt-1 text-center text-xs text-muted-foreground">Original</p>
                             </div>
                             <div>
-                              <img src={result.heatmapDataUrl} alt="Grad-CAM heatmap" className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
+                              <img
+                                src={result.heatmapDataUrl}
+                                alt="Grad-CAM heatmap"
+                                className="w-full rounded-2xl border border-border object-contain bg-foreground/5"
+                              />
                               <p className="mt-1 text-center text-xs text-muted-foreground">Heatmap</p>
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-2 rounded-lg border border-border bg-foreground/5 p-3">
-                            <div className="relative mx-auto h-64 w-full overflow-hidden rounded-md">
+                          <div className="space-y-2 rounded-2xl border border-border bg-foreground/5 p-3">
+                            <div className="relative mx-auto h-64 w-full overflow-hidden rounded-xl">
                               <img
                                 src={preview ?? ""}
                                 alt={`Original ${formatModalityLabel(result.modality)}`}
@@ -822,7 +1001,7 @@ Model: ${result.modelUsed}
                                 className="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity"
                               />
                             </div>
-                            <div className="flex items-center gap-3 px-1 pt-1 text-xs">
+                            <div className="flex items-center gap-3 px-2 pt-1 text-xs">
                               <span className="text-muted-foreground">Original</span>
                               <input
                                 type="range"
@@ -831,18 +1010,21 @@ Model: ${result.modelUsed}
                                 value={blendOpacity}
                                 onChange={(e) => setBlendOpacity(Number(e.target.value))}
                                 aria-label="Grad-CAM overlay opacity"
-                                className="h-1.5 flex-1 cursor-pointer accent-secondary"
+                                className="h-1.5 flex-1 cursor-pointer accent-[#2563eb]"
                               />
-                              <span className="w-20 text-right font-mono text-foreground">{blendOpacity}% Heatmap</span>
+                              <span className="w-24 text-right font-mono text-foreground">{blendOpacity}% Heatmap</span>
                             </div>
                           </div>
                         )}
 
-                        {/* Explanation panel — teaches the clinician what the colors mean */}
-                        <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
-                          <p className="font-medium text-foreground">How to read this heatmap</p>
+                        {/* Heatmap Explanation Panel */}
+                        <div className="mt-3 space-y-2 rounded-2xl border border-border bg-muted/40 p-4 text-xs">
+                          <p className="font-bold text-foreground">How to read this heatmap</p>
                           <p className="text-muted-foreground">
-                            This overlay implies that the highlighted areas of the lung are the regions the AI focused on when arriving at a <span className="font-semibold text-foreground">{result.prediction}</span> diagnosis — in other words, <span className="italic">these portions are the affected / most influential parts</span> of the {result.modality === "ct" ? "CT scan" : "X-ray"}.
+                            This overlay implies that the highlighted areas of the lung are the regions the AI focused on when arriving at a{" "}
+                            <span className="font-semibold text-foreground">{result.prediction}</span> diagnosis — in other words,{" "}
+                            <span className="italic">these portions are the affected / most influential parts</span> of the{" "}
+                            {result.modality === "ct" ? "CT scan" : "X-ray"}.
                           </p>
                           <div className="flex flex-wrap items-center gap-3 pt-1">
                             <span className="flex items-center gap-1.5">
@@ -862,70 +1044,126 @@ Model: ${result.modelUsed}
                             </span>
                           </div>
                           {result.prediction === "Normal" ? (
-                            <p className="text-muted-foreground">Because the diagnosis is <span className="font-semibold text-foreground">Normal</span>, the highlighted regions represent healthy lung fields the model verified rather than signs of disease.</p>
+                            <p className="text-muted-foreground">
+                              Because the diagnosis is <span className="font-semibold text-foreground">Normal</span>, the highlighted regions represent healthy lung fields the model verified rather than signs of disease.
+                            </p>
                           ) : result.modality === "ct" ? (
-                            <p className="text-muted-foreground">The hotter regions likely correspond to nodules, masses, or other tissue patterns consistent with <span className="font-semibold text-foreground">{result.prediction}</span>. Correlate with clinical findings and refer for radiologist review.</p>
+                            <p className="text-muted-foreground">
+                              The hotter regions likely correspond to nodules, masses, or other tissue patterns consistent with{" "}
+                              <span className="font-semibold text-foreground">{result.prediction}</span>. Correlate with clinical findings and refer for radiologist review.
+                            </p>
                           ) : (
-                            <p className="text-muted-foreground">The hotter regions likely correspond to opacities, consolidations, or other patterns consistent with <span className="font-semibold text-foreground">{result.prediction}</span>. Always correlate with clinical findings.</p>
+                            <p className="text-muted-foreground">
+                              The hotter regions likely correspond to opacities, consolidations, or other patterns consistent with{" "}
+                              <span className="font-semibold text-foreground">{result.prediction}</span>. Always correlate with clinical findings.
+                            </p>
                           )}
                         </div>
                       </div>
                     )}
 
-                    <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Scan Type</span><span className="text-foreground">{formatModalityLabel(result.modality)}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="text-foreground">{result.modelUsed}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Timestamp</span><span className="text-foreground">{result.timestamp}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Image</span><span className="truncate text-foreground">{selectedFile?.name}</span></div>
+                    {/* Clinical Interpretation & Next Steps */}
+                    {CLINICAL_GUIDANCE[result.prediction] && (
+                      <div className="rounded-2xl border border-border bg-muted/30 p-4 text-xs">
+                        <p className="mb-1 flex items-center gap-1.5 font-bold text-foreground">
+                          <Stethoscope className="h-3.5 w-3.5 text-[#2563eb]" />
+                          Clinical Interpretation &amp; Suggested Workup
+                        </p>
+                        <p className="mb-2 text-muted-foreground">
+                          {CLINICAL_GUIDANCE[result.prediction].summary}
+                        </p>
+                        <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                          {CLINICAL_GUIDANCE[result.prediction].nextSteps.map((step, idx) => (
+                            <li key={idx}>{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="space-y-2 rounded-2xl bg-muted/50 p-4 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Scan Type</span>
+                        <span className="font-medium text-foreground">{formatModalityLabel(result.modality)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Model</span>
+                        <span className="text-foreground">{result.modelUsed}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Timestamp</span>
+                        <span className="text-foreground">{result.timestamp}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Image</span>
+                        <span className="truncate text-foreground">{selectedFile?.name}</span>
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Button
                         variant="outline"
-                        className="w-full"
-                        onClick={() => result && generateReport({
-                          modality: result.modality,
-                          prediction: result.prediction,
-                          confidence: result.confidence,
-                          findings: result.findings,
-                          timestamp: result.timestamp,
-                          filename: selectedFile?.name || (result.modality === "ct" ? "chest-ct.jpg" : "chest-xray.jpg"),
-                          imageDataUrl: preview,
-                          heatmapDataUrl: result.heatmapDataUrl,
-                          classProbabilities: result.classProbabilities,
-                          patientName: activePatient?.patient_name,
-                          patientAge: activePatient?.age ?? undefined,
-                          patientGender: activePatient?.gender ?? undefined,
-                          patientNotes: activePatient?.notes ?? undefined,
-                          practitioner: profile?.full_name || user?.email,
-                          hospital: profile?.hospital || undefined,
-                          modelUsed: result.modelUsed,
-                        })}
+                        className="h-11 w-full rounded-full font-semibold"
+                        onClick={() =>
+                          result &&
+                          generateReport({
+                            modality: result.modality,
+                            prediction: result.prediction,
+                            confidence: result.confidence,
+                            findings: result.findings,
+                            timestamp: result.timestamp,
+                            filename: selectedFile?.name || (result.modality === "ct" ? "chest-ct.jpg" : "chest-xray.jpg"),
+                            imageDataUrl: preview,
+                            heatmapDataUrl: result.heatmapDataUrl,
+                            classProbabilities: result.classProbabilities,
+                            patientName: activePatient?.patient_name,
+                            patientAge: activePatient?.age ?? undefined,
+                            patientGender: activePatient?.gender ?? undefined,
+                            patientNotes: activePatient?.notes ?? undefined,
+                            practitioner: profile?.full_name || user?.email,
+                            hospital: profile?.hospital || undefined,
+                            modelUsed: result.modelUsed,
+                          })
+                        }
                       >
                         <Download className="mr-2 h-4 w-4" /> Download Full PDF Report
                       </Button>
 
-                      <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      <div className="rounded-2xl border border-border bg-muted/30 p-3.5">
+                        <p className="mb-2.5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                           <Share2 className="h-3.5 w-3.5" /> Share this report
                         </p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <Button size="sm" variant="secondary" onClick={shareWhatsApp} className="bg-[#25D366] text-white hover:bg-[#20b558]">
+                          <Button size="sm" variant="secondary" onClick={shareWhatsApp} className="rounded-full bg-[#25D366] text-white hover:bg-[#20b558]">
                             <MessageCircle className="mr-1 h-4 w-4" />WhatsApp
                           </Button>
-                          <Button size="sm" variant="outline" onClick={shareEmail}><Mail className="mr-1 h-4 w-4" />Email</Button>
-                          <Button size="sm" variant="outline" onClick={shareNative}><Share2 className="mr-1 h-4 w-4" />Share…</Button>
-                          <Button size="sm" variant="outline" onClick={copyText}><Link2 className="mr-1 h-4 w-4" />Copy</Button>
+                          <Button size="sm" variant="outline" onClick={shareEmail} className="rounded-full">
+                            <Mail className="mr-1 h-4 w-4" />Email
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={shareNative} className="rounded-full">
+                            <Share2 className="mr-1 h-4 w-4" />Share…
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={copyText} className="rounded-full">
+                            <Link2 className="mr-1 h-4 w-4" />Copy
+                          </Button>
                         </div>
                       </div>
                     </div>
 
-                    <p className="text-xs text-muted-foreground">⚠️ This is an AI-assisted analysis and should not replace professional medical diagnosis.</p>
+                    <p className="text-xs text-muted-foreground">
+                      ⚠️ This is an AI-assisted analysis and should not replace professional medical diagnosis.
+                    </p>
                   </motion.div>
                 ) : (
-                  <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16 text-center">
-                    <FileImage className="mb-4 h-12 w-12 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">
+                  <motion.div
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center justify-center py-14 text-center"
+                  >
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2563eb]/10 text-[#2563eb]">
+                      <FileImage className="h-7 w-7" />
+                    </div>
+                    <p className="max-w-sm text-sm text-muted-foreground">
                       Enter patient details, upload a {scanShortLabel}, and analyze to see the full report here.
                     </p>
                   </motion.div>
@@ -933,9 +1171,9 @@ Model: ${result.modelUsed}
               </AnimatePresence>
             </motion.div>
           </div>
-        )}
-      </main>
-    </div>
+        </div>
+      )}
+    </ClinicalShell>
   );
 };
 

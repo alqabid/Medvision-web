@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Shield, LogOut, ArrowLeft, Search, Download, FileImage,
-  AlertTriangle, CheckCircle2, Database, Filter,
+  Search, Download, FileImage, AlertTriangle, CheckCircle2, Database, Filter,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import ClinicalShell from "@/components/ClinicalShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadCSV } from "@/lib/csv";
@@ -45,8 +45,7 @@ interface PatientRow {
 }
 
 const Records = () => {
-  const { user, userRole, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { user, userRole } = useAuth();
   const [rows, setRows] = useState<AnalysisRow[]>([]);
   const [patients, setPatients] = useState<Record<string, PatientRow>>({});
   const [search, setSearch] = useState("");
@@ -113,8 +112,6 @@ const Records = () => {
     toast.success(`Exported ${exportRows.length} records`);
   };
 
-  const handleSignOut = async () => { await signOut(); navigate("/"); };
-
   const avgConf = useMemo(
     () => modalityFilteredRows.length ? (modalityFilteredRows.reduce((s, r) => s + Number(r.confidence), 0) / modalityFilteredRows.length).toFixed(1) : "0",
     [modalityFilteredRows]
@@ -124,155 +121,143 @@ const Records = () => {
   const ctCount = useMemo(() => rows.filter(r => r.modality === "ct").length, [rows]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-secondary" />
-            <span className="font-display text-lg font-bold text-foreground">MedVision</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/dashboard"><ArrowLeft className="mr-2 h-4 w-4" />Dashboard</Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />Sign Out
-            </Button>
-          </div>
+    <ClinicalShell
+      headerRight={
+        <Button onClick={handleExport} size="sm" className="rounded-full bg-[#2563eb] px-4 text-white hover:bg-[#1d4ed8]">
+          <Download className="mr-1.5 h-3.5 w-3.5" />Export CSV
+        </Button>
+      }
+    >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5 sm:text-4xl">
+            <Database className="h-8 w-8 text-[#2563eb]" />Records Management
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Centralized, encrypted diagnostic records across Chest X-ray and Chest CT{userRole === "admin" ? " (admin view: all users)" : ""}.
+          </p>
         </div>
-      </header>
+        <Button variant="outline" asChild className="rounded-full">
+          <Link to="/audit">Audit Trail</Link>
+        </Button>
+      </motion.div>
 
-      <main className="mx-auto max-w-7xl px-6 py-10">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="mb-2 font-display text-3xl font-bold text-foreground flex items-center gap-2">
-              <Database className="h-7 w-7 text-secondary" />Records Management
-            </h1>
-            <p className="text-muted-foreground">Centralized, encrypted diagnostic records. RLS-secured per user{userRole === "admin" ? " (admin view: all users)" : ""}.</p>
+      {/* Overview cards */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="clinical-surface p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Total Records</span>
+            <FileImage className="h-5 w-5 text-[#2563eb]" />
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild><Link to="/audit">Audit Trail</Link></Button>
-            <Button onClick={handleExport} className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-              <Download className="mr-2 h-4 w-4" />Export CSV
-            </Button>
+          <p className="mt-2 font-display text-3xl font-bold text-foreground">{modalityFilteredRows.length}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{xrayCount} X-ray · {ctCount} CT</p>
+        </div>
+        <div className="clinical-surface p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Avg Confidence</span>
+            <Filter className="h-5 w-5 text-info" />
           </div>
-        </motion.div>
-
-        {/* Overview cards — total + avg confidence, then one card per class */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total Records</span>
-              <FileImage className="h-5 w-5 text-secondary" />
-            </div>
-            <p className="mt-2 font-display text-3xl font-bold text-foreground">{modalityFilteredRows.length}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Avg Confidence</span>
-              <Filter className="h-5 w-5 text-info" />
-            </div>
-            <p className="mt-2 font-display text-3xl font-bold text-foreground">{avgConf}%</p>
-          </div>
-          {classCounts.slice(0, 6).map(c => {
-            const st = styleFor(c.name);
-            const Icon = st.icon;
-            return (
-              <div key={c.name} className="rounded-xl border border-border bg-card p-5 shadow-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{c.name}</span>
-                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${st.badge}`}>
-                    <Icon className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-                <p className="mt-2 font-display text-3xl font-bold text-foreground">{c.value}</p>
-                <p className="text-xs text-muted-foreground">
-                  {modalityFilteredRows.length ? ((c.value / modalityFilteredRows.length) * 100).toFixed(1) : "0"}% of total
-                </p>
+          <p className="mt-2 font-display text-3xl font-bold text-foreground">{avgConf}%</p>
+          <p className="mt-1 text-xs text-muted-foreground">Mean model probability</p>
+        </div>
+        {classCounts.slice(0, 6).map(c => {
+          const st = styleFor(c.name);
+          const Icon = st.icon;
+          return (
+            <div key={c.name} className="clinical-surface p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{c.name}</span>
+                <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${st.badge}`}>
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
               </div>
-            );
-          })}
+              <p className="mt-2 font-display text-3xl font-bold text-foreground">{c.value}</p>
+              <p className="text-xs text-muted-foreground">
+                {modalityFilteredRows.length ? ((c.value / modalityFilteredRows.length) * 100).toFixed(1) : "0"}% of cohort
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="mb-5 flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search by patient, filename, or result…" value={search} onChange={e => setSearch(e.target.value)} className="rounded-full pl-10" />
         </div>
+        <Select value={modalityFilter} onValueChange={setModalityFilter}>
+          <SelectTrigger className="w-48 rounded-full"><SelectValue placeholder="All Scan Types" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Scan Types ({rows.length})</SelectItem>
+            <SelectItem value="xray">Chest X-ray ({xrayCount})</SelectItem>
+            <SelectItem value="ct">Chest CT ({ctCount})</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger className="w-52 rounded-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Classes ({modalityFilteredRows.length})</SelectItem>
+            {classCounts.map(c => (
+              <SelectItem key={c.name} value={c.name}>{c.name} ({c.value})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        <div className="mb-4 flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search by patient, filename, or result…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-          </div>
-          <Select value={modalityFilter} onValueChange={setModalityFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="All Scan Types" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Scan Types ({rows.length})</SelectItem>
-              <SelectItem value="xray">Chest X-ray ({xrayCount})</SelectItem>
-              <SelectItem value="ct">Chest CT ({ctCount})</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Classes ({modalityFilteredRows.length})</SelectItem>
-              {classCounts.map(c => (
-                <SelectItem key={c.name} value={c.name}>{c.name} ({c.value})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-
-        <div className="rounded-xl border border-border bg-card p-6 shadow-card overflow-x-auto">
-          {loading ? (
-            <p className="py-12 text-center text-muted-foreground">Loading records…</p>
-          ) : filtered.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">No records match your filters.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="pb-3 font-medium text-muted-foreground">Date</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Patient</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Scan Type</th>
-                  <th className="pb-3 font-medium text-muted-foreground">File</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Result</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Confidence</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Model</th>
+      <div className="clinical-surface p-6 overflow-x-auto">
+        {loading ? (
+          <p className="py-12 text-center text-muted-foreground">Loading records…</p>
+        ) : filtered.length === 0 ? (
+          <p className="py-12 text-center text-muted-foreground">No records match your filters.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="pb-3 font-medium text-muted-foreground">Date</th>
+                <th className="pb-3 font-medium text-muted-foreground">Patient</th>
+                <th className="pb-3 font-medium text-muted-foreground">Scan Type</th>
+                <th className="pb-3 font-medium text-muted-foreground">File</th>
+                <th className="pb-3 font-medium text-muted-foreground">Result</th>
+                <th className="pb-3 font-medium text-muted-foreground">Confidence</th>
+                <th className="pb-3 font-medium text-muted-foreground">Model</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => {
+                const st = styleFor(r.prediction);
+                const Icon = st.icon;
+                const isCt = r.modality === "ct";
+                return (
+                <tr key={r.id} className="border-b border-border/50 last:border-0">
+                  <td className="py-3.5 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                  <td className="py-3.5 font-medium text-foreground">{r.patient_id ? patients[r.patient_id]?.patient_name ?? "—" : "—"}</td>
+                  <td className="py-3.5">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                      }`}
+                    >
+                      {formatModalityLabel(r.modality)}
+                    </span>
+                  </td>
+                  <td className="py-3.5 text-muted-foreground max-w-[200px] truncate">{r.original_filename}</td>
+                  <td className="py-3.5">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.badge}`}>
+                      <Icon className="h-3 w-3" />
+                      {r.prediction}
+                    </span>
+                  </td>
+                  <td className="py-3.5 font-mono text-foreground">{Number(r.confidence).toFixed(1)}%</td>
+                  <td className="py-3.5 text-muted-foreground">{r.model_used}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map(r => {
-                  const st = styleFor(r.prediction);
-                  const Icon = st.icon;
-                  const isCt = r.modality === "ct";
-                  return (
-                  <tr key={r.id} className="border-b border-border/50 last:border-0">
-                    <td className="py-3 text-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
-                    <td className="py-3 text-foreground">{r.patient_id ? patients[r.patient_id]?.patient_name ?? "—" : "—"}</td>
-                    <td className="py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
-                        }`}
-                      >
-                        {formatModalityLabel(r.modality)}
-                      </span>
-                    </td>
-                    <td className="py-3 text-muted-foreground max-w-[200px] truncate">{r.original_filename}</td>
-                    <td className="py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${st.badge}`}>
-                        <Icon className="h-3 w-3" />
-                        {r.prediction}
-                      </span>
-                    </td>
-                    <td className="py-3 text-foreground">{Number(r.confidence).toFixed(1)}%</td>
-                    <td className="py-3 text-muted-foreground">{r.model_used}</td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </main>
-    </div>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </ClinicalShell>
   );
 };
 

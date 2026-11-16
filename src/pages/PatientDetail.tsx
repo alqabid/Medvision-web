@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, LogOut, ArrowLeft, AlertTriangle, CheckCircle2, FileImage } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, AlertTriangle, CheckCircle2, FileImage } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
+import ClinicalShell from "@/components/ClinicalShell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -37,8 +37,6 @@ const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest C
 
 const PatientDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,89 +71,92 @@ const PatientDetail = () => {
     setLoading(false);
   };
 
-  const handleSignOut = async () => { await signOut(); navigate("/"); };
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-secondary" />
-            <span className="font-display text-lg font-bold text-foreground">MedVision</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/patients"><ArrowLeft className="mr-2 h-4 w-4" />Patients</Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+    <ClinicalShell
+      headerRight={
+        <Button variant="outline" size="sm" asChild className="rounded-full">
+          <Link to="/patients"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" />All Patients</Link>
+        </Button>
+      }
+    >
+      {loading ? (
+        <p className="py-12 text-center text-muted-foreground">Loading...</p>
+      ) : !patient ? (
+        <p className="py-12 text-center text-muted-foreground">Patient not found.</p>
+      ) : (
+        <div className="space-y-7">
+          {/* Medikals-inspired Royal Blue Patient Banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[28px] bg-[#2563eb] p-7 text-white shadow-elevated"
+          >
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                Age: {patient.age ?? "—"}
+              </span>
+              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                Gender: {patient.gender || "—"}
+              </span>
+              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                Registered: {new Date(patient.created_at).toLocaleDateString()}
+              </span>
+            </div>
+            <h1 className="font-display text-3xl font-extrabold">{patient.patient_name}</h1>
+            {patient.notes && (
+              <p className="mt-2 max-w-2xl text-sm text-white/85">Notes: {patient.notes}</p>
+            )}
+          </motion.div>
 
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        {loading ? (
-          <p className="py-12 text-center text-muted-foreground">Loading...</p>
-        ) : !patient ? (
-          <p className="py-12 text-center text-muted-foreground">Patient not found.</p>
-        ) : (
-          <>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 rounded-xl border border-border bg-card p-6 shadow-card">
-              <h1 className="mb-1 font-display text-2xl font-bold text-foreground">{patient.patient_name}</h1>
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-                <span>Gender: {patient.gender || "—"}</span>
-                <span>Age: {patient.age ?? "—"}</span>
-                <span>Added: {new Date(patient.created_at).toLocaleDateString()}</span>
-              </div>
-              {patient.notes && (
-                <p className="mt-3 text-sm text-muted-foreground">Notes: {patient.notes}</p>
-              )}
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-6 shadow-card">
-              <h2 className="mb-4 font-display text-lg font-semibold text-card-foreground">Scan History</h2>
-              {analyses.length === 0 ? (
-                <p className="py-12 text-center text-muted-foreground">
-                  No scans recorded for this patient yet. Run an analysis from the Dashboard and select this patient to see it here.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {analyses.map((a) => {
-                    const isCt = a.modality === "ct";
-                    return (
-                      <div key={a.id} className="flex items-center justify-between rounded-lg border border-border/50 p-4">
-                        <div className="flex items-center gap-3">
-                          <FileImage className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
-                                }`}
-                              >
-                                {formatModalityLabel(a.modality)}
-                              </span>
-                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${resultBadgeClass(a.prediction)}`}>
-                                {a.prediction === "Normal" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-                                {a.prediction}
-                              </span>
-                              <span className="text-sm text-foreground">{a.confidence}% confidence</span>
-                            </div>
-                            <p className="mt-1 text-xs text-muted-foreground">{a.original_filename} · {new Date(a.created_at).toLocaleString()}</p>
-                          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="clinical-surface p-6"
+          >
+            <h2 className="mb-4 font-display text-lg font-bold text-card-foreground">Scan History</h2>
+            {analyses.length === 0 ? (
+              <p className="py-12 text-center text-muted-foreground">
+                No scans recorded for this patient yet. Run an analysis from the Dashboard and select this patient to see it here.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {analyses.map((a) => {
+                  const isCt = a.modality === "ct";
+                  return (
+                    <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 transition-colors hover:bg-muted/40">
+                      <div className="flex items-center gap-3.5">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb]/10 text-[#2563eb]">
+                          <FileImage className="h-5 w-5" />
                         </div>
-                        <span className="text-xs text-muted-foreground">{a.model_used}</span>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                isCt ? "bg-info/10 text-info" : "bg-secondary/10 text-secondary"
+                              }`}
+                            >
+                              {formatModalityLabel(a.modality)}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${resultBadgeClass(a.prediction)}`}>
+                              {a.prediction === "Normal" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                              {a.prediction}
+                            </span>
+                            <span className="font-mono text-sm font-semibold text-foreground">{a.confidence}% confidence</span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{a.original_filename} · {new Date(a.created_at).toLocaleString()}</p>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </motion.div>
-          </>
-        )}
-      </main>
-    </div>
+                      <span className="text-xs text-muted-foreground">{a.model_used}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </ClinicalShell>
   );
 };
 
