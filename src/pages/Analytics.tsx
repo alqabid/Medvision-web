@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, LogOut, ArrowLeft, BarChart3, TrendingUp, Activity, FileImage } from "lucide-react";
+import { Shield, LogOut, ArrowLeft, BarChart3, TrendingUp, Activity, FileImage, Layers } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 
 interface AnalysisRecord {
   id: string;
+  modality?: string;
   prediction: string;
   confidence: number;
   created_at: string;
@@ -35,41 +36,50 @@ const Analytics = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [analyses, setAnalyses] = useState<AnalysisRecord[]>([]);
+  const [modalityFilter, setModalityFilter] = useState<"all" | "xray" | "ct">("all");
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("analyses").select("id, prediction, confidence, created_at").eq("user_id", user.id).then(({ data }) => {
+    supabase.from("analyses").select("*").eq("user_id", user.id).then(({ data }) => {
       if (data) setAnalyses(data as AnalysisRecord[]);
     });
   }, [user]);
 
-  const total = analyses.length;
-  const avgConf = total ? (analyses.reduce((s, a) => s + Number(a.confidence), 0) / total).toFixed(1) : "0";
+  const filteredAnalyses = useMemo(() => {
+    if (modalityFilter === "all") return analyses;
+    return analyses.filter((a) => (a.modality ?? "xray") === modalityFilter);
+  }, [analyses, modalityFilter]);
+
+  const xrayTotal = useMemo(() => analyses.filter((a) => (a.modality ?? "xray") === "xray").length, [analyses]);
+  const ctTotal = useMemo(() => analyses.filter((a) => a.modality === "ct").length, [analyses]);
+
+  const total = filteredAnalyses.length;
+  const avgConf = total ? (filteredAnalyses.reduce((s, a) => s + Number(a.confidence), 0) / total).toFixed(1) : "0";
 
   // Dynamic class aggregation — every distinct prediction becomes its own class.
   const classCounts = useMemo(() => {
     const map = new Map<string, number>();
-    analyses.forEach(a => map.set(a.prediction, (map.get(a.prediction) ?? 0) + 1));
+    filteredAnalyses.forEach(a => map.set(a.prediction, (map.get(a.prediction) ?? 0) + 1));
     return Array.from(map.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [analyses]);
+  }, [filteredAnalyses]);
 
   const abnormal = useMemo(
-    () => analyses.filter(a => a.prediction !== "Normal" && a.prediction !== "Invalid").length,
-    [analyses]
+    () => filteredAnalyses.filter(a => a.prediction !== "Normal" && a.prediction !== "Invalid").length,
+    [filteredAnalyses]
   );
 
   // Monthly trend across every class
   const trendData = useMemo(() => {
     const monthly: Record<string, Record<string, number | string>> = {};
-    analyses.forEach(a => {
+    filteredAnalyses.forEach(a => {
       const m = new Date(a.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" });
       if (!monthly[m]) monthly[m] = { month: m };
       monthly[m][a.prediction] = ((monthly[m][a.prediction] as number) ?? 0) + 1;
     });
     return Object.values(monthly).slice(-6);
-  }, [analyses]);
+  }, [filteredAnalyses]);
 
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
@@ -93,17 +103,48 @@ const Analytics = () => {
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="mb-2 font-display text-3xl font-bold text-foreground flex items-center gap-2"><BarChart3 className="h-7 w-7 text-secondary" />Analytics</h1>
-          <p className="text-muted-foreground">Multi-class insights across every diagnosis your model has produced.</p>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="mb-2 font-display text-3xl font-bold text-foreground flex items-center gap-2"><BarChart3 className="h-7 w-7 text-secondary" />Analytics</h1>
+            <p className="text-muted-foreground">Multi-class insights across Chest X-ray (Pneumonia) and Chest CT (Lung-Cancer Subtypes) diagnoses.</p>
+          </div>
+          <div role="group" aria-label="Modality analytics filter" className="inline-flex rounded-lg border border-border bg-card p-1 text-xs shadow-sm">
+            <button
+              type="button"
+              onClick={() => setModalityFilter("all")}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                modalityFilter === "all" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              All Modalities ({analyses.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalityFilter("xray")}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                modalityFilter === "xray" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Chest X-ray ({xrayTotal})
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalityFilter("ct")}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                modalityFilter === "ct" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Chest CT ({ctTotal})
+            </button>
+          </div>
         </motion.div>
 
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "Total Scans", value: total, icon: FileImage, color: "text-secondary" },
-            { label: "Distinct Classes", value: classCounts.length, icon: BarChart3, color: "text-info" },
-            { label: "Abnormal Findings", value: abnormal, icon: Activity, color: "text-destructive" },
-            { label: "Avg. Confidence", value: `${avgConf}%`, icon: TrendingUp, color: "text-success" },
+            { label: "Total Scans", value: total, sub: `${xrayTotal} X-ray · ${ctTotal} CT`, icon: FileImage, color: "text-secondary" },
+            { label: "Distinct Classes", value: classCounts.length, sub: "Active diagnostic labels", icon: Layers, color: "text-info" },
+            { label: "Abnormal Findings", value: abnormal, sub: "Non-normal classifications", icon: Activity, color: "text-destructive" },
+            { label: "Avg. Confidence", value: `${avgConf}%`, sub: "Mean model probability", icon: TrendingUp, color: "text-success" },
           ].map(stat => (
             <div key={stat.label} className="rounded-xl border border-border bg-card p-5 shadow-card">
               <div className="flex items-center justify-between">
@@ -111,6 +152,7 @@ const Analytics = () => {
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
               <p className="mt-2 font-display text-3xl font-bold text-foreground">{stat.value}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{stat.sub}</p>
             </div>
           ))}
         </div>

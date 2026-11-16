@@ -66,7 +66,7 @@ const Signup = () => {
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="max-w-md text-center">
           <Shield className="mx-auto mb-6 h-12 w-12 text-accent" />
           <h2 className="mb-4 font-display text-2xl font-semibold text-primary-foreground">Join MedVision</h2>
-          <p className="text-primary-foreground/60">Create your account to start using AI-powered chest X-ray analysis with full data protection.</p>
+          <p className="text-primary-foreground/60">Create your account to start using AI-powered Chest X-ray and Chest CT analysis with Grad-CAM explainability and full data protection.</p>
         </motion.div>
       </div>
 

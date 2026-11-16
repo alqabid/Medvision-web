@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X, History, Settings, User, Users, BarChart3, Download, Database, ScrollText, Share2, MessageCircle, Mail, Link2, UserPlus, Info } from "lucide-react";
+import {
+  Shield, Upload, LogOut, FileImage, AlertTriangle, CheckCircle2, Loader2, X,
+  History, Settings, User, Users, BarChart3, Download, Database, ScrollText,
+  Share2, MessageCircle, Mail, Link2, UserPlus, Info, Stethoscope, Layers,
+  Activity, Sliders, Columns,
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -61,6 +66,89 @@ const getResultStyle = (prediction: string) => {
 
 const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest CT" : "Chest X-ray");
 
+const MODALITY_PROFILES: Record<
+  ScanModality,
+  {
+    title: string;
+    subtitle: string;
+    architecture: string;
+    classes: Array<{ name: string; detail: string }>;
+  }
+> = {
+  xray: {
+    title: "Chest X-ray · 3-Class Pneumonia Classifier",
+    subtitle: "Evaluates AP/PA chest radiographs for lobar consolidation and interstitial infiltrates.",
+    architecture: "MobileNetV2 (3-class · 224×224 RGB · Grad-CAM out_relu)",
+    classes: [
+      { name: "Bacterial", detail: "Focal lobar consolidation / air bronchograms" },
+      { name: "Viral", detail: "Diffuse bilateral interstitial / perihilar pattern" },
+      { name: "Normal", detail: "Clear lung fields & sharp costophrenic angles" },
+    ],
+  },
+  ct: {
+    title: "Chest CT · 4-Class Lung-Cancer Subtype Classifier",
+    subtitle: "Evaluates axial thoracic CT slices for non-small cell carcinoma patterns vs. normal parenchyma.",
+    architecture: "MobileNetV2 (4-class · 224×224 RGB · Grad-CAM out_relu)",
+    classes: [
+      { name: "Adenocarcinoma", detail: "Often peripheral nodules or ground-glass/solid masses" },
+      { name: "Large Cell Carcinoma", detail: "Typically large peripheral masses with rapid growth" },
+      { name: "Squamous Cell Carcinoma", detail: "Frequently central/hilar masses, may cavitate" },
+      { name: "Normal", detail: "Unremarkable lung parenchyma & mediastinal contours" },
+    ],
+  },
+};
+
+const CLINICAL_GUIDANCE: Record<string, { summary: string; nextSteps: string[] }> = {
+  Normal: {
+    summary: "No high-confidence radiographic pattern of target pathology was detected in this scan.",
+    nextSteps: [
+      "Correlate with presenting symptoms, vital signs, and physical examination.",
+      "If clinical suspicion persists despite a normal scan, consider follow-up imaging or specialist review.",
+    ],
+  },
+  Bacterial: {
+    summary: "Pattern is most consistent with bacterial pneumonia (typically focal lobar or segmental airspace consolidation).",
+    nextSteps: [
+      "Correlate with fever, leukocytosis, procalcitonin/CRP, and sputum Gram stain/culture.",
+      "Evaluate guideline-concordant empiric antibiotic therapy and severity scoring (e.g. CURB-65 / PSI).",
+    ],
+  },
+  Viral: {
+    summary: "Pattern is most consistent with viral pneumonia (often bilateral interstitial or patchy perihilar opacities).",
+    nextSteps: [
+      "Correlate with viral respiratory panel (PCR/antigen) and pulse oximetry.",
+      "Note: Model recall on Viral cases is lower than Bacterial due to training class imbalance; review borderline probabilities carefully.",
+    ],
+  },
+  Adenocarcinoma: {
+    summary: "CT slice features align most closely with pulmonary adenocarcinoma (the most common NSCLC subtype, frequently peripheral).",
+    nextSteps: [
+      "Refer for formal thoracic radiologist review and full volumetric CT / PET-CT staging.",
+      "Consider tissue diagnosis (CT-guided core biopsy or bronchoscopy) and molecular profiling (EGFR, ALK, ROS1, PD-L1).",
+    ],
+  },
+  "Large Cell Carcinoma": {
+    summary: "CT slice features align most closely with large cell carcinoma (an undifferentiated NSCLC subtype often presenting as a bulky peripheral mass).",
+    nextSteps: [
+      "Arrange urgent multidisciplinary thoracic oncology and radiology evaluation.",
+      "Correlate with contrast-enhanced staging imaging and histopathologic/immunohistochemical confirmation.",
+    ],
+  },
+  "Squamous Cell Carcinoma": {
+    summary: "CT slice features align most closely with squamous cell carcinoma (NSCLC subtype frequently arising centrally near major bronchi).",
+    nextSteps: [
+      "Recommend formal radiologist interpretation, bronchoscopy/biopsy evaluation, and complete TNM staging.",
+      "Assess airway patency, smoking history, and multidisciplinary oncology workup.",
+    ],
+  },
+  Invalid: {
+    summary: "The uploaded file did not pass the grayscale medical scan pre-check and was not scored by the neural network.",
+    nextSteps: [
+      "Upload an uncolored, standard grayscale Chest X-ray or axial Chest CT slice in PNG or JPEG format.",
+    ],
+  },
+};
+
 const Dashboard = () => {
   const { user, userRole, signOut } = useAuth();
   const navigate = useNavigate();
@@ -80,14 +168,40 @@ const Dashboard = () => {
   const [newPatient, setNewPatient] = useState<PatientDraft>(emptyPatient);
   const [activePatient, setActivePatient] = useState<PatientRow | null>(null);
 
+  // Interactive Grad-CAM viewer mode: side-by-side vs overlay blend
+  const [heatmapView, setHeatmapView] = useState<"split" | "blend">("split");
+  const [blendOpacity, setBlendOpacity] = useState<number>(65);
+
+  // Backend health status per modality
+  const [backendModalities, setBackendModalities] = useState<{ xray: boolean; ct: boolean } | null>(null);
+
   const scanLabel = formatModalityLabel(modality);
   const scanShortLabel = modality === "ct" ? "CT scan" : "X-ray";
+  const modalityProfile = MODALITY_PROFILES[modality];
 
   useEffect(() => {
     fetchHistory();
     fetchProfile();
     fetchPatients();
+    checkBackendHealth();
   }, [user]);
+
+  const checkBackendHealth = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_MEDVISION_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/health`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.modalities) {
+        setBackendModalities({
+          xray: Boolean(data.modalities.xray),
+          ct: Boolean(data.modalities.ct),
+        });
+      }
+    } catch {
+      // ignore offline health check on initial load
+    }
+  };
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -324,13 +438,28 @@ Model: ${result.modelUsed}
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="mb-2 font-display text-3xl font-bold text-foreground">Scan Analysis</h1>
-          <p className="mb-8 text-muted-foreground">
-            {modality === "ct"
-              ? "Register the patient, upload their chest CT scan, and get a 4-class lung-cancer subtype AI classification with Grad-CAM explainability."
-              : "Register the patient, upload their chest X-ray, and get a 3-class pneumonia AI diagnosis with Grad-CAM explainability."}
-          </p>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="mb-2 font-display text-3xl font-bold text-foreground">Scan Analysis</h1>
+            <p className="text-muted-foreground">
+              {modality === "ct"
+                ? "Register the patient, upload their chest CT scan, and get a 4-class lung-cancer subtype AI classification with Grad-CAM explainability."
+                : "Register the patient, upload their chest X-ray, and get a 3-class pneumonia AI diagnosis with Grad-CAM explainability."}
+            </p>
+          </div>
+          {backendModalities && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm">
+              <span className="font-medium text-muted-foreground">Inference Engine:</span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${backendModalities.xray ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${backendModalities.xray ? "bg-success" : "bg-warning"}`} />
+                X-ray {backendModalities.xray ? "Ready" : "Offline"}
+              </span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${backendModalities.ct ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${backendModalities.ct ? "bg-success" : "bg-warning"}`} />
+                CT {backendModalities.ct ? "Ready" : "Not Deployed"}
+              </span>
+            </div>
+          )}
         </motion.div>
 
         {showHistory ? (
@@ -461,22 +590,41 @@ Model: ${result.modelUsed}
                       type="button"
                       disabled={isAnalyzing}
                       onClick={() => handleModalityChange("xray")}
-                      className={`rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                         modality === "xray" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
+                      <Activity className="h-3.5 w-3.5 text-secondary" />
                       Chest X-ray
                     </button>
                     <button
                       type="button"
                       disabled={isAnalyzing}
                       onClick={() => handleModalityChange("ct")}
-                      className={`rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                         modality === "ct" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
+                      <Layers className="h-3.5 w-3.5 text-info" />
                       Chest CT
                     </button>
+                  </div>
+                </div>
+
+                {/* Modality Diagnostic Scope & Target Classes Panel */}
+                <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3.5 text-xs">
+                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-foreground">{modalityProfile.title}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">{modalityProfile.architecture}</span>
+                  </div>
+                  <p className="mb-2.5 text-muted-foreground">{modalityProfile.subtitle}</p>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {modalityProfile.classes.map((cls) => (
+                      <div key={cls.name} className="rounded border border-border/60 bg-card/70 px-2.5 py-1.5">
+                        <span className="font-medium text-foreground">{cls.name}</span>
+                        <p className="text-[11px] text-muted-foreground">{cls.detail}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -498,7 +646,7 @@ Model: ${result.modelUsed}
                   >
                     <Upload className={`mb-4 h-10 w-10 ${dragOver ? "text-secondary" : "text-muted-foreground"}`} />
                     <p className="mb-2 text-sm font-medium text-foreground">Drag & drop your {scanLabel.toLowerCase()} image</p>
-                    <p className="mb-4 text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                    <p className="mb-4 text-xs text-muted-foreground">PNG, JPG up to 10MB · EXIF metadata stripped client-side</p>
                     <label>
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
                       <span className="cursor-pointer rounded-lg bg-secondary/10 px-4 py-2 text-sm font-medium text-secondary transition-colors hover:bg-secondary/20">Browse Files</span>
@@ -529,12 +677,13 @@ Model: ${result.modelUsed}
               <div className="mb-4 flex items-center justify-between gap-2">
                 <h2 className="font-display text-lg font-semibold text-card-foreground">Analysis Results</h2>
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     (result?.modality ?? modality) === "ct"
                       ? "bg-info/10 text-info"
                       : "bg-secondary/10 text-secondary"
                   }`}
                 >
+                  {(result?.modality ?? modality) === "ct" ? <Layers className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
                   {formatModalityLabel(result?.modality ?? modality)}
                 </span>
               </div>
@@ -564,7 +713,7 @@ Model: ${result.modelUsed}
                       const StyleIcon = style.icon;
                       return (
                         <div className={`flex items-center gap-4 rounded-lg border p-4 ${style.boxClass}`}>
-                          <StyleIcon className={`h-8 w-8 ${style.iconClass}`} />
+                          <StyleIcon className={`h-8 w-8 shrink-0 ${style.iconClass}`} />
                           <div>
                             <p className="font-display text-xl font-bold text-foreground">{result.prediction}</p>
                             <p className="text-sm text-muted-foreground">{result.findings}</p>
@@ -572,6 +721,24 @@ Model: ${result.modelUsed}
                         </div>
                       );
                     })()}
+
+                    {/* Clinical Interpretation & Next Steps Card */}
+                    {CLINICAL_GUIDANCE[result.prediction] && (
+                      <div className="rounded-lg border border-border bg-muted/30 p-3.5 text-xs">
+                        <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground">
+                          <Stethoscope className="h-3.5 w-3.5 text-secondary" />
+                          Clinical Interpretation &amp; Suggested Workup
+                        </p>
+                        <p className="mb-2 text-muted-foreground">
+                          {CLINICAL_GUIDANCE[result.prediction].summary}
+                        </p>
+                        <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                          {CLINICAL_GUIDANCE[result.prediction].nextSteps.map((step, idx) => (
+                            <li key={idx}>{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     {result.prediction !== "Invalid" && (
                       <div>
@@ -602,18 +769,74 @@ Model: ${result.modelUsed}
 
                     {result.prediction !== "Invalid" && result.heatmapDataUrl && (
                       <div>
-                        <p className="mb-2 text-sm font-medium text-foreground">Grad-CAM Heatmap</p>
-                        <p className="mb-2 text-xs text-muted-foreground">Highlighted regions show what most influenced the model's prediction.</p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <img src={preview ?? ""} alt={`Original ${formatModalityLabel(result.modality)}`} className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
-                            <p className="mt-1 text-center text-xs text-muted-foreground">Original</p>
+                            <p className="text-sm font-medium text-foreground">Grad-CAM Heatmap</p>
+                            <p className="text-xs text-muted-foreground">Highlighted regions show what most influenced the model's prediction.</p>
                           </div>
-                          <div>
-                            <img src={result.heatmapDataUrl} alt="Grad-CAM heatmap" className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
-                            <p className="mt-1 text-center text-xs text-muted-foreground">Heatmap</p>
+                          <div className="inline-flex rounded-lg bg-muted p-0.5 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setHeatmapView("split")}
+                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
+                                heatmapView === "split" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                              }`}
+                            >
+                              <Columns className="h-3 w-3" /> Side-by-Side
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHeatmapView("blend")}
+                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
+                                heatmapView === "blend" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                              }`}
+                            >
+                              <Sliders className="h-3 w-3" /> Interactive Blend
+                            </button>
                           </div>
                         </div>
+
+                        {heatmapView === "split" ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <img src={preview ?? ""} alt={`Original ${formatModalityLabel(result.modality)}`} className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
+                              <p className="mt-1 text-center text-xs text-muted-foreground">Original</p>
+                            </div>
+                            <div>
+                              <img src={result.heatmapDataUrl} alt="Grad-CAM heatmap" className="w-full rounded-lg border border-border object-contain bg-foreground/5" />
+                              <p className="mt-1 text-center text-xs text-muted-foreground">Heatmap</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 rounded-lg border border-border bg-foreground/5 p-3">
+                            <div className="relative mx-auto h-64 w-full overflow-hidden rounded-md">
+                              <img
+                                src={preview ?? ""}
+                                alt={`Original ${formatModalityLabel(result.modality)}`}
+                                className="h-full w-full object-contain"
+                              />
+                              <img
+                                src={result.heatmapDataUrl}
+                                alt="Grad-CAM heatmap overlay"
+                                style={{ opacity: blendOpacity / 100 }}
+                                className="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity"
+                              />
+                            </div>
+                            <div className="flex items-center gap-3 px-1 pt-1 text-xs">
+                              <span className="text-muted-foreground">Original</span>
+                              <input
+                                type="range"
+                                min={0}
+                                max={100}
+                                value={blendOpacity}
+                                onChange={(e) => setBlendOpacity(Number(e.target.value))}
+                                aria-label="Grad-CAM overlay opacity"
+                                className="h-1.5 flex-1 cursor-pointer accent-secondary"
+                              />
+                              <span className="w-20 text-right font-mono text-foreground">{blendOpacity}% Heatmap</span>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Explanation panel — teaches the clinician what the colors mean */}
                         <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">

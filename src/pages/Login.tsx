@@ -82,8 +82,8 @@ const Login = () => {
             <Shield className="h-10 w-10 text-accent" />
             <span className="font-display text-3xl font-bold text-primary-foreground">MedVision</span>
           </div>
-          <h2 className="mb-4 font-display text-2xl font-semibold text-primary-foreground">Secure AI Diagnostics</h2>
-          <p className="text-primary-foreground/60">Access your AI-powered pneumonia detection platform with enterprise-grade security.</p>
+          <h2 className="mb-4 font-display text-2xl font-semibold text-primary-foreground">Secure Thoracic AI Diagnostics</h2>
+          <p className="text-primary-foreground/60">Access your AI-powered Chest X-ray pneumonia &amp; Chest CT lung-cancer diagnostic platform with enterprise-grade security.</p>
         </motion.div>
       </div>
 

@@ -5,26 +5,26 @@ const steps = [
   {
     icon: Upload,
     step: "01",
-    title: "Upload X-Ray",
-    description: "Securely upload a chest X-ray image. Metadata is automatically stripped for anonymization.",
+    title: "Select Modality & Upload",
+    description: "Register the patient, choose Chest X-ray or Chest CT, and upload the scan. EXIF metadata is stripped automatically.",
   },
   {
     icon: Cpu,
     step: "02",
-    title: "AI Analysis",
-    description: "Our MobileNetV2 model preprocesses and classifies the image in real time.",
+    title: "Modality-Specific Inference",
+    description: "The corresponding MobileNetV2 model runs 3-class pneumonia (X-ray) or 4-class lung-cancer (CT) inference in real time.",
   },
   {
     icon: FileCheck,
     step: "03",
-    title: "View Results",
-    description: "Receive a Bacterial/Viral/Normal classification with a detailed confidence breakdown.",
+    title: "Inspect Grad-CAM & Probabilities",
+    description: "Review per-class confidence bars and interactive Grad-CAM heatmaps highlighting influential anatomical regions.",
   },
   {
     icon: History,
     step: "04",
-    title: "Track History",
-    description: "All analyses are securely stored and searchable in your case history.",
+    title: "Export Report & Track History",
+    description: "Download a clinical PDF report, share findings with colleagues, and filter longitudinal records by scan modality.",
   },
 ];
 
@@ -42,7 +42,7 @@ const HowItWorksSection = () => {
             How It <span className="text-secondary">Works</span>
           </h2>
           <p className="mx-auto max-w-lg text-muted-foreground">
-            From upload to diagnosis in four simple steps.
+            From patient registration and scan selection to explainable AI diagnosis in four steps.
           </p>
         </motion.div>
 

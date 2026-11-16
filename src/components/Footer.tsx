@@ -7,11 +7,11 @@ const Footer = () => (
         <Shield className="h-5 w-5 text-secondary" />
         <span className="font-display text-lg font-bold text-foreground">MedVision</span>
       </div>
-      <p className="max-w-md text-sm text-muted-foreground">
-        AI-powered pneumonia detection from chest X-rays. Built with enterprise-grade security for healthcare professionals.
+      <p className="max-w-lg text-sm text-muted-foreground">
+        AI-powered thoracic diagnostics for Chest X-ray pneumonia detection and Chest CT lung-cancer subtype classification, with Grad-CAM explainability.
       </p>
       <p className="text-xs text-muted-foreground/60">
-        © 2026 MedVision. For research and educational purposes.
+        © 2026 MedVision. For research and educational purposes — not a substitute for professional medical judgement.
       </p>
     </div>
   </footer>

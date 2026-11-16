@@ -129,7 +129,7 @@ const Admin = () => {
   };
 
   const totalAnalyses = analyses.length;
-  const pneumoniaCases = analyses.filter(a => a.prediction === "Pneumonia").length;
+  const abnormalCases = analyses.filter(a => a.prediction !== "Normal" && a.prediction !== "Invalid").length;
   const avgConfidence = analyses.length > 0
     ? (analyses.reduce((s, a) => s + Number(a.confidence), 0) / analyses.length).toFixed(1)
     : "0";
@@ -167,7 +167,7 @@ const Admin = () => {
           {[
             { label: "Total Users", value: profiles.length, icon: Users, color: "text-secondary" },
             { label: "Total Analyses", value: totalAnalyses, icon: FileImage, color: "text-info" },
-            { label: "Pneumonia Detected", value: pneumoniaCases, icon: AlertTriangle, color: "text-destructive" },
+            { label: "Abnormal Detected", value: abnormalCases, icon: AlertTriangle, color: "text-destructive" },
             { label: "Avg. Confidence", value: `${avgConfidence}%`, icon: BarChart3, color: "text-success" },
           ].map((stat) => (
             <div key={stat.label} className="rounded-xl border border-border bg-card p-5 shadow-card">
