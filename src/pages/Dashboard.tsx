@@ -74,6 +74,23 @@ const getResultStyle = (prediction: string) => {
 
 const formatModalityLabel = (modality?: string) => (modality === "ct" ? "Chest CT" : "Chest X-ray");
 
+const LOW_CONFIDENCE_THRESHOLD = 65;
+const MIN_MARGIN_THRESHOLD = 15;
+
+const isBorderlinePrediction = (res: AnalysisResult | null): boolean => {
+  if (!res || res.prediction === "Invalid") return false;
+  if (res.confidence < LOW_CONFIDENCE_THRESHOLD) return true;
+  if (res.classProbabilities) {
+    const sorted = Object.values(res.classProbabilities)
+      .map(Number)
+      .sort((a, b) => b - a);
+    if (sorted.length >= 2 && sorted[0] - sorted[1] < MIN_MARGIN_THRESHOLD) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const CLINICAL_GUIDANCE: Record<string, { summary: string; nextSteps: string[] }> = {
   Normal: {
     summary: "No high-confidence radiographic pattern of target pathology was detected in this scan.",
