@@ -170,7 +170,7 @@ const Dashboard = () => {
     if (isLocalHost) {
       return envUrl && envUrl !== localUrl ? [localUrl, envUrl] : [localUrl];
     }
-    return envUrl && envUrl !== localUrl ? [envUrl, localUrl] : [localUrl];
+    return envUrl ? [envUrl] : [localUrl];
   };
 
   const checkBackendHealth = async () => {
@@ -365,7 +365,9 @@ const Dashboard = () => {
             break;
           }
         } catch (fetchErr: any) {
-          lastErrorMsg = fetchErr?.message || "Model analysis failed. Is the backend server running?";
+          if (!lastErrorMsg) {
+            lastErrorMsg = fetchErr?.message || "Model analysis failed. Is the backend server running?";
+          }
         }
       }
 
