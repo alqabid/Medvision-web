@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -29,9 +30,10 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
+        <ErrorBoundary>
+          <BrowserRouter>
+            <AuthProvider>
+              <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
@@ -72,9 +74,10 @@ const App = () => (
               />
               <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
+              </Routes>
+            </AuthProvider>
+          </BrowserRouter>
+        </ErrorBoundary>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
