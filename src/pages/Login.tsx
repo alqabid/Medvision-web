@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, DEMO_ACCOUNT } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import lungsHero from "@/assets/thoracic-lungs-hero.jpg";
 
@@ -45,6 +45,21 @@ const Login = () => {
     } else if (requiresOtp) {
       toast.success("We sent a login code to your email");
       setStep("otp");
+    } else {
+      toast.success("Signed in to MedVision Workstation");
+      goToDashboard();
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setEmail(DEMO_ACCOUNT.email);
+    setPassword(DEMO_ACCOUNT.password);
+    setRequireOtp(false);
+    setIsLoading(true);
+    const { error } = await signIn(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password, false);
+    setIsLoading(false);
+    if (error) {
+      toast.error(error.message);
     } else {
       toast.success("Signed in to MedVision Workstation");
       goToDashboard();
@@ -251,6 +266,29 @@ const Login = () => {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </form>
+
+                <div className="mt-5 rounded-2xl border border-border/80 bg-muted/40 p-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wider text-secondary">
+                        Test Demo Account
+                      </p>
+                      <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+                        {DEMO_ACCOUNT.email} · {DEMO_ACCOUNT.password}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading}
+                      onClick={handleDemoLogin}
+                      className="shrink-0 rounded-full border-[#07221e]/20 bg-background px-4 text-xs font-semibold hover:bg-[#07221e] hover:text-[#72f6d5]"
+                    >
+                      Demo Login
+                    </Button>
+                  </div>
+                </div>
 
                 <p className="mt-6 text-center text-sm text-muted-foreground">
                   Don't have a clinician account?{" "}

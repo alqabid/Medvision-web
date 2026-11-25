@@ -10,6 +10,14 @@ import {
   addLocalAuditLog,
 } from "@/lib/localClinicalStore";
 
+export const DEMO_ACCOUNT = {
+  email: "demo@medvision.app",
+  password: "medvision123",
+  full_name: "Dr. Demo Clinician",
+  specialty: "Thoracic Radiology",
+  hospital: "Korle Bu Teaching Hospital",
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -196,6 +204,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string, requireOtp = false) => {
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (normalizedEmail === DEMO_ACCOUNT.email && password === DEMO_ACCOUNT.password) {
+      const demoAcct = upsertLocalAccount({
+        email: DEMO_ACCOUNT.email,
+        password: DEMO_ACCOUNT.password,
+        full_name: DEMO_ACCOUNT.full_name,
+        specialty: DEMO_ACCOUNT.specialty,
+        hospital: DEMO_ACCOUNT.hospital,
+      });
+      applyLocalAccount(demoAcct);
+      addLocalAuditLog({
+        user_id: demoAcct.id,
+        action: "clinician_signin",
+        details: { email: demoAcct.email },
+      });
+      return { error: null, requiresOtp: false };
+    }
 
     try {
       const { data, error: passwordError } = await supabase.auth.signInWithPassword({
