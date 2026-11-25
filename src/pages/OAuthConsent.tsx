@@ -14,6 +14,15 @@ function oauth(): OAuthNamespace {
   return (supabase.auth as unknown as { oauth: OAuthNamespace }).oauth;
 }
 
+function isSafeHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function OAuthConsent() {
   const [params] = useSearchParams();
   const authorizationId = params.get("authorization_id") ?? "";
@@ -36,6 +45,7 @@ export default function OAuthConsent() {
       if (error) return setError(error.message);
       const immediate = data?.redirect_url ?? data?.redirect_to;
       if (immediate && !data?.client) {
+        if (!isSafeHttpUrl(immediate)) return setError("Invalid redirect URL.");
         window.location.href = immediate;
         return;
       }
@@ -56,9 +66,9 @@ export default function OAuthConsent() {
       return setError(error.message);
     }
     const target = data?.redirect_url ?? data?.redirect_to;
-    if (!target) {
+    if (!target || !isSafeHttpUrl(target)) {
       setBusy(false);
-      return setError("No redirect returned by the authorization server.");
+      return setError("Invalid or missing redirect returned by the authorization server.");
     }
     window.location.href = target;
   }

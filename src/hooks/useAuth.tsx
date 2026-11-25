@@ -257,7 +257,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const knownAccounts = getLocalAccounts();
       const matched = knownAccounts.find((a) => a.email.toLowerCase() === normalizedEmail);
 
-      if (matched && (!matched.password || matched.password === password)) {
+      if (matched && (Boolean(matched.password) && matched.password === password)) {
         applyLocalAccount(matched);
         addLocalAuditLog({
           user_id: matched.id,
@@ -285,7 +285,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err: any) {
       const knownAccounts = getLocalAccounts();
       const matched = knownAccounts.find((a) => a.email.toLowerCase() === normalizedEmail);
-      if (matched && (!matched.password || matched.password === password)) {
+      if (matched && (Boolean(matched.password) && matched.password === password)) {
         applyLocalAccount(matched);
         return { error: null, requiresOtp: false };
       }
